@@ -75,7 +75,7 @@ class Server(threading.Thread):
     def decrypt_message(self, cipher_text):
         decoded_message = base64.b64decode(cipher_text)
         iv = decoded_message[:16]
-        secret_key = bytes(str(self.secret_key), encoding="utf8") 
+        secret_key = bytes(str(self.secret_key), encoding="utf8")
 
         cipher = AES.new(secret_key, AES.MODE_CBC, iv)
         decrypted_message = cipher.decrypt(decoded_message[16:]).strip()

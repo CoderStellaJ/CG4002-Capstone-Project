@@ -1,15 +1,16 @@
 import sys
+import socket
+import base64
+import time
+
+from Crypto.Cipher import AES
 from Crypto import Random
 
-import socket
-import threading
-
-import base64
-from Crypto.Cipher import AES
-
+BLOCK_SIZE = 16
+PADDING = ' '
 #ACTIONS = ['muscle', 'weightlifting', 'shoutout', 'dumbbells', 'tornado', 'facewipe', 'pacman', 'shootingstar', 'logout']
 
-class Client(threading.Thread):
+class Client():
     def __init__(self, ip_addr, port_num, group_id, secret_key):
         super(Client, self).__init__()
 
@@ -17,24 +18,34 @@ class Client(threading.Thread):
         server_address = (ip_addr, port_num)
         self.secret_key = secret_key
         self.socket.connect(server_address)
-        self.shutdown = threading.Event()
-
         print("client is connected!")
+
+
+    def add_padding(self, plain_text):
+        pad = lambda s: s + (BLOCK_SIZE - (len(s) % BLOCK_SIZE)) * PADDING
+        padded_plain_text = pad(plain_text)
+        print("padded_plain_text length: ", len(padded_plain_text))
+        return padded_plain_text
 
 
     def encrypt_message(self, position, action, syncdelay):
         plain_text = '#' + position + '|' + action + '|' + syncdelay + '|'
+        print("plain_text: ", plain_text)
+        padded_plain_text = self.add_padding(plain_text)
         iv = Random.new().read(AES.block_size)
-        cipher = AES.new(self.secret_key, AES.MODE_CBC, iv)
-        encrypted_text = base64.b64encode(iv + cipher.encrypt(plain_text))
-
+        aes_key = bytes(str(self.secret_key), encoding="utf8")
+        cipher = AES.new(aes_key, AES.MODE_CBC, iv)
+        encrypted_text = base64.b64encode(iv + cipher.encrypt(bytes(padded_plain_text, "utf8"))).decode("utf8")
+        print(type(encrypted_text))
         return encrypted_text
 
 
     def send_data(self, position, action, syncdelay):
         encrypted_text = self.encrypt_message(position, action, syncdelay)
-        send_message = bytes(str(encrypted_text), encoding="utf8")
-        self.socket.sendall(send_message)
+        print("encrypted_text: ", encrypted_text)
+        sent_message = encrypted_text.encode("utf8")
+        print("sent_message length: ", len(sent_message))
+        self.socket.sendall(sent_message)
 
 def main():
     if len(sys.argv) != 5:
@@ -52,6 +63,7 @@ def main():
     count = 0
     while action != "logout":
         my_client.send_data("1 2 3", "muscle", "1.00")
+        time.sleep(2)
         count += 1
 
 if __name__ == '__main__':
