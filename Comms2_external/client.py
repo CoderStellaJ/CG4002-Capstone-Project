@@ -18,6 +18,8 @@ class Client():
         server_address = (ip_addr, port_num)
         self.secret_key = secret_key
         self.socket.connect(server_address)
+        # testing on laptop
+        # self.timeout = 60
         print("client is connected!")
 
 
@@ -35,7 +37,7 @@ class Client():
         iv = Random.new().read(AES.block_size)
         aes_key = bytes(str(self.secret_key), encoding="utf8")
         cipher = AES.new(aes_key, AES.MODE_CBC, iv)
-        encrypted_text = base64.b64encode(iv + cipher.encrypt(bytes(padded_plain_text, "utf8"))).decode("utf8")
+        encrypted_text = base64.b64encode(iv + cipher.encrypt(bytes(padded_plain_text, "utf8")))
         print(type(encrypted_text))
         return encrypted_text
 
@@ -43,7 +45,7 @@ class Client():
     def send_data(self, position, action, syncdelay):
         encrypted_text = self.encrypt_message(position, action, syncdelay)
         print("encrypted_text: ", encrypted_text)
-        sent_message = encrypted_text.encode("utf8")
+        sent_message = encrypted_text
         print("sent_message length: ", len(sent_message))
         self.socket.sendall(sent_message)
 
@@ -61,6 +63,8 @@ def main():
     my_client = Client(ip_addr, port_num, group_id, secret_key)
     action = ""
     count = 0
+    # test client on laptop
+    time.sleep(10)
     while action != "logout":
         my_client.send_data("1 2 3", "muscle", "1.00")
         time.sleep(2)
