@@ -52,7 +52,7 @@ class Client():
 def main():
     if len(sys.argv) != 5:
         print('Invalid number of arguments')
-        print('python client.py [IP address] [Port] [groupID] [secret key]')
+        print('python eval_client.py [IP address] [Port] [groupID] [secret key]')
         sys.exit()
 
     ip_addr = sys.argv[1]

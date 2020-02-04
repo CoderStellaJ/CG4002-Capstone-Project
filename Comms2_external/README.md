@@ -10,7 +10,7 @@
 3. key in secret key in server
 ```
 python eval_server.py 127.0.0.1 8888 6
-python client.py 127.0.0.1 8888 6 cg40024002group6
+python eval_client.py 127.0.0.1 8888 6 cg40024002group6
 ```
 secret key (length is 16):
 ```
