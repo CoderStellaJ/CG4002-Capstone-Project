@@ -16,7 +16,13 @@ from tkinter import Label, Tk
 import pandas as pd
 from Crypto.Cipher import AES
 
+import psycopg2
+from random import seed
+from random import random
+
 MESSAGE_SIZE = 3 # position, 1 action, sync
+
+
 
 
 class Server(threading.Thread):
@@ -36,6 +42,11 @@ class Server(threading.Thread):
         #set up a connection
         self.client_address, self.secret_key = self.setup_connection()
 
+    def randomNo(self):
+        # seed random number generator
+        seed(1)
+        return random()
+
     def setup_connection(self):
         # Wait for a connection
         print('waiting for a connection', file=sys.stderr)
@@ -53,12 +64,32 @@ class Server(threading.Thread):
         
         return client_address, secret_key # forgot to return the secret key
 
+    def addValue(self,a,b,c):
+        connection = psycopg2.connect(user = "postgres",
+                                  password = "Cg4002",
+                                  host = "localhost",
+                                  port = "5432",
+                                  database = "postgres")
+        cursor = connection.cursor()
+        postgres_insert_query = """ INSERT INTO testTable (A, B, C) VALUES (%s,%s,%s)"""
+        record_to_insert = (a,b,c)
+        cursor.execute(postgres_insert_query, record_to_insert)
+
+        connection.commit()
+        count = cursor.rowcount
+        print (count, "Record inserted successfully into mobile table")
+
     def run(self):
         while not self.shutdown.is_set():
             data = self.connection.recv(1024)
 
             if data:
-                print(self.decrypt_message(data))
+                obj = self.decrypt_message(data)
+                #print(self.decrypt_message(data))
+                self.addValue(obj['position'],obj['action'],obj['sync'])
+                #print(obj['position'])
+                #print(obj['action'])
+                #print(obj['sync'])
 ##                try:
 ##                    msg = data.decode("utf8")
 ##                    decrypted_message = self.decrypt_message(msg)
@@ -104,7 +135,8 @@ class Server(threading.Thread):
             'position': position, 'action': action, 'sync':sync
         }
 
-        
+
+            
 
 
 
