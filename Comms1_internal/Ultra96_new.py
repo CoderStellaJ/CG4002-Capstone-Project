@@ -158,5 +158,6 @@ if __name__ == '__main__':
         """ml_future = futures.ProcessPoolExecutor(max_workers=os.cpu_count())
         ml_process = ml_future.submit(executeMachineLearning)"""
         """with future in concurrent.futures.as_completed(ml_process):
+            ml_future.shutdown(wait=True)
             send_results = futures.ProcessPoolExecutor(max_workers=os.cpu_count())
             send_results_process = send_results.submit(send_results_to_servers)"""
