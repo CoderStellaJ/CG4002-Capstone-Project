@@ -20,10 +20,9 @@ import psycopg2
 from random import seed
 from random import random
 
+from dbAPI import showTable,addValue #import function from
+
 MESSAGE_SIZE = 3 # position, 1 action, sync
-
-
-
 
 class Server(threading.Thread):
     def __init__(self, ip_addr, port_num, group_id):
@@ -160,4 +159,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    showTable("testTable")
+    #main()
