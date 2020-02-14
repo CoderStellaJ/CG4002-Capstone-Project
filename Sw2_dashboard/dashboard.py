@@ -24,6 +24,7 @@ from dbAPI import showTable,addValue #import function from
 
 MESSAGE_SIZE = 3 # position, 1 action, sync
 
+
 class Server(threading.Thread):
     def __init__(self, ip_addr, port_num, group_id):
         super(Server, self).__init__()
@@ -40,11 +41,7 @@ class Server(threading.Thread):
         self.socket.listen(1)
         #set up a connection
         self.client_address, self.secret_key = self.setup_connection()
-
-    def randomNo(self):
-        # seed random number generator
-        seed(1)
-        return random()
+        self.i = 1.0
 
     def setup_connection(self):
         # Wait for a connection
@@ -63,20 +60,6 @@ class Server(threading.Thread):
         
         return client_address, secret_key # forgot to return the secret key
 
-    def addValue(self,a,b,c):
-        connection = psycopg2.connect(user = "postgres",
-                                  password = "Cg4002",
-                                  host = "localhost",
-                                  port = "5432",
-                                  database = "postgres")
-        cursor = connection.cursor()
-        postgres_insert_query = """ INSERT INTO testTable (A, B, C) VALUES (%s,%s,%s)"""
-        record_to_insert = (a,b,c)
-        cursor.execute(postgres_insert_query, record_to_insert)
-
-        connection.commit()
-        count = cursor.rowcount
-        print (count, "Record inserted successfully into mobile table")
 
     def run(self):
         while not self.shutdown.is_set():
@@ -85,10 +68,9 @@ class Server(threading.Thread):
             if data:
                 obj = self.decrypt_message(data)
                 #print(self.decrypt_message(data))
-                self.addValue(obj['position'],obj['action'],obj['sync'])
-                #print(obj['position'])
-                #print(obj['action'])
-                #print(obj['sync'])
+                addValue("testTable", obj['position'],obj['action'],str((float(obj['sync']) + self.i)))
+                self.i += 1.0 # generate a random value
+                #showTable("testTable")
 ##                try:
 ##                    msg = data.decode("utf8")
 ##                    decrypted_message = self.decrypt_message(msg)
@@ -135,10 +117,6 @@ class Server(threading.Thread):
         }
 
 
-            
-
-
-
 def main():
     if len(sys.argv) != 4:
         print('Invalid number of arguments')
@@ -151,13 +129,7 @@ def main():
 
     my_server = Server(ip_addr, port_num, group_id)
     my_server.start()
-    
-##    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-##    s.bind((ip_addr, port_num))
-##    s.listen(5)        
-
-
 
 if __name__ == '__main__':
-    showTable("testTable")
-    #main()
+    #showTable("testTable")
+    main()
