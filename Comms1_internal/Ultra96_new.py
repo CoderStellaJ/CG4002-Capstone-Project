@@ -131,7 +131,7 @@ def getBeetleData(beetle_peri):
             # wait for 5 seconds for data; return false if no data comes after that
             if beetle_peri.waitForNotifications(5.0):
                 print("getting data...")
-                if all(value >= global_num_of_datasets for value in beetles_dataset_count_dict.values()) # if number of datasets received from all beetles exceed expectation
+                if all(value >= global_num_of_datasets for value in beetles_dataset_count_dict.values()): # if number of datasets received from all beetles exceed expectation
                     return
                 continue
         except:
