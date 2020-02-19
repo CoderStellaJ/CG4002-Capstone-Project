@@ -5,6 +5,7 @@ import concurrent
 from concurrent import futures
 import threading
 import time
+from Comms2_external import *
 
 # global variables
 beetle_addresses = ["1C:BA:8C:1D:30:22"]
@@ -114,7 +115,7 @@ class Delegate(btle.DefaultDelegate):
         global is_checksum_1
         global is_checksum_2
         global is_checksum_3
-        ultra96_receiving_timestamp = time.time()
+        ultra96_receiving_timestamp = time.time() * 1000
 
         for idx in range(len(beetle_addresses)):
             if global_delegate_obj[idx] == self:
@@ -137,7 +138,7 @@ class Delegate(btle.DefaultDelegate):
                             if char == '>':  # end of packet
                                 beetle1_timestamp_list.append(
                                     int(timestamp_string1))
-                                ultra96_receiving_timestamp = time.time()
+                                ultra96_receiving_timestamp = time.time() * 1000
                                 beetle1_timestamp_list.append(
                                     ultra96_receiving_timestamp)
                                 beetle1_handshake_flag_dict.update(
@@ -254,6 +255,7 @@ def initHandshake(beetle_peripheral, address):
     global beetle1_clocksync_flag_dict
     global beetle2_clocksync_flag_dict
     global beetle3_clocksync_flag_dict
+    global beetle1_clock_offset
     ultra96_sending_timestamp = time.time()
     for bdAddress, boolFlag in beetles_connection_flag_dict.items():
         if bdAddress == address and boolFlag == False:
@@ -280,6 +282,9 @@ def initHandshake(beetle_peripheral, address):
                                     bytes('A', 'utf-8'), withResponse=False)
                                 print("handshake succeeded with %s" % (
                                     address))
+                                # function for time calibration
+                                beetle1_clock_offset = time_calibration.calculate_clock_offset(beetle1_timestamp_list)
+                                print("beetle1 clock offset: ", beetle1_clock_offset)
                                 break
                             else:
                                 continue
