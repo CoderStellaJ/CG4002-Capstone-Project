@@ -5,7 +5,7 @@ import concurrent
 from concurrent import futures
 import threading
 import time
-from Comms2_external import *
+from time_calibration import *
 
 # global variables
 beetle_addresses = ["1C:BA:8C:1D:30:22"]
