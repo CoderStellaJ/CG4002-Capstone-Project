@@ -134,11 +134,11 @@ class Delegate(btle.DefaultDelegate):
                     for char in beetle1_buffer_dict[beetle_addresses[idx]]:
                         if char == 'A' or beetle1_handshake_flag_dict[beetle_addresses[idx]] is True:
                             if char == 'A':
+                                ultra96_receiving_timestamp = time.time() * 1000
                                 continue
                             if char == '>':  # end of packet
                                 beetle1_timestamp_list.append(
                                     int(timestamp_string1))
-                                ultra96_receiving_timestamp = time.time() * 1000
                                 beetle1_timestamp_list.append(
                                     ultra96_receiving_timestamp)
                                 beetle1_handshake_flag_dict.update(
@@ -256,12 +256,12 @@ def initHandshake(beetle_peripheral, address):
     global beetle2_clocksync_flag_dict
     global beetle3_clocksync_flag_dict
     global beetle1_clock_offset
-    ultra96_sending_timestamp = time.time()
+    ultra96_sending_timestamp = time.time() * 1000
     for bdAddress, boolFlag in beetles_connection_flag_dict.items():
         if bdAddress == address and boolFlag == False:
             for characteristic in beetle_peripheral.getCharacteristics():
                 if characteristic.uuid == UUIDS.SERIAL_COMMS:
-                    ultra96_sending_timestamp = time.time()
+                    ultra96_sending_timestamp = time.time() * 1000
                     if address == beetle1_timestamp_list[0]:
                         beetle1_timestamp_list.append(
                             ultra96_sending_timestamp)
