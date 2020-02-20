@@ -1,7 +1,4 @@
-# Changing the actions in self.actions should automatically change the script to function with the new number of moves.
-# Developed and improved by past CG3002 TAs and students: Tean Zheng Yang, Jireh Tan, Boyd Anderson,
-# Paul Tan, Bernard Tan Ke Xuan, Ashley Ong, Kennard Ng, Xen Santos
-
+#Dashboard server that interacts with client server of ATMEGA96
 import os
 import sys
 import random
@@ -41,7 +38,7 @@ class Server(threading.Thread):
         self.socket.listen(1)
         #set up a connection
         self.client_address, self.secret_key = self.setup_connection()
-        self.i = 1.0
+        
 
     def setup_connection(self):
         # Wait for a connection
@@ -61,6 +58,7 @@ class Server(threading.Thread):
         return client_address, secret_key # forgot to return the secret key
 
 
+#Function that runs the receiving of messages
     def run(self):
         while not self.shutdown.is_set():
             data = self.connection.recv(1024)
@@ -68,27 +66,12 @@ class Server(threading.Thread):
             if data:
                 obj = self.decrypt_message(data)
                 #print(self.decrypt_message(data))
-                addValue("testTable", obj['position'],obj['action'],str((float(obj['sync']) + self.i)))
-                self.i += 1.0 # generate a random value
-                #showTable("testTable")
-##                try:
-##                    msg = data.decode("utf8")
-##                    decrypted_message = self.decrypt_message(msg)
-##                    if decrypted_message['action'] == "logout":
-##                        self.logout = True
-##                        self.stop()
-##                        print("bye bye")
-##                    elif len(decrypted_message['action']) == 0:
-##                        pass  # no valid action sent
-##                    elif self.action is None:
-##                        pass  # no action sent yet.
-##                    else:  # action is available so we log it
-##                        self.has_no_response = False
-##                        print("{} :: {} :: {}".format(decrypted_message['position'],
-##                                                                  decrypted_message['action'], 
-##                                                                  decrypted_message['sync']))
-##                except Exception as e:
-##                    print(e)
+                #addValue("testTable", obj['position'],obj['action'],str((float(obj['sync']) + self.i)))
+                #self.i += 1.0 # generate a random value
+
+                #set a timer of every 5s change a dance move
+                
+
             else:
                 print('no more data from', self.client_address, file=sys.stderr)
                 self.stop()
@@ -116,20 +99,52 @@ class Server(threading.Thread):
             'position': position, 'action': action, 'sync':sync
         }
 
+import threading
+global i
+i=0
+def changeMove():
+    #using i as a counter to change variables
+    global i
+    threading.Timer(5.0,changeMove).start()
+    i = i+1
+    if(i==10):
+        i = i - 1
+    
+
+def fakeData():
+    global i
+    threading.Timer(1.0, fakeData).start()
+    arr = ["shoutout","transition",
+           "weightlift","transition",
+           "muscle","transition",
+           "shoutout","transition",
+           "weightlift","transition"]
+    if (arr[i] == "shoutout"):
+        addValue("Dancer1",1.0, 1.0, 1.0)
+    elif (arr[i] == "weightlift"):
+        addValue("Dancer1",2.0, 3.0, 5.0)
+    elif (arr[i] == "muscle"):
+        addValue("Dancer1",3.0, 4.0, 4.0)
+    elif (arr[i] == "transition"):
+        addValue("Dancer1", 0, 0, 0)
+    
 
 def main():
-    if len(sys.argv) != 4:
-        print('Invalid number of arguments')
-        print('python server.py [IP address] [Port] [groupID]')
-        sys.exit()
-
-    ip_addr = sys.argv[1]
-    port_num = int(sys.argv[2])
-    group_id = sys.argv[3]
+##    if len(sys.argv) != 4:
+##        print('Invalid number of arguments')
+##        print('python server.py [IP address] [Port] [groupID]')
+##        sys.exit()
+##
+##    ip_addr = sys.argv[1]
+##    port_num = int(sys.argv[2])
+##    group_id = sys.argv[3]
 
     my_server = Server(ip_addr, port_num, group_id)
     my_server.start()
 
 if __name__ == '__main__':
     #showTable("testTable")
-    main()
+    changeMove()
+    fakeData()
+    #main()
+    

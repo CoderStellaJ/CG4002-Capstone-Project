@@ -11,70 +11,90 @@ from collections import deque
 
 from dbAPI import getLastRow
 
-from random import seed
-from random import randint
-# seed random number generator
-seed(1)
 
-X = deque(maxlen=20)
+X = deque(maxlen=10)
 X.append(1)
-Y = deque(maxlen=20)
-Y.append(1)
-sensorValues = [2,3]
-
-def addSensorValues():
-    for x in range(30):
-        sensorValues.append(x)
+Yaw = deque(maxlen=10)
+Yaw.append(1)
+Pitch = deque(maxlen=10)
+Pitch.append(1)
+Roll = deque(maxlen=10)
+Roll.append(1)
 
 
 app = dash.Dash(__name__)
 
 #Defines a graph
-app.layout = html.Div(
-    [
-        dcc.Graph(id='live-graph', animate=True),
-        dcc.Interval(
-            id='graph-update',
-            interval=1000,
-            n_intervals = 0
-        )
-    ]
-)
+app.layout = html.Div([
+    html.Div([
+        html.H2('Dancer 1',
+                style={'float': 'left',
+                       }),
+        ]),
+    html.Div(children=html.Div(id='graphs'), className='row'),
+    dcc.Interval(
+        id='graph-update',
+        interval=1000,
+        n_intervals=0),
 
-#generate dummyData whenever there is a sensor showed
-def dummyData():
-    i = 0
-    for _ in range(10):
-        i = randint(0, 30)
-    return sensorValues[i]
+    ], className="container",style={'width':'98%','margin-left':10,'margin-right':10,'max-width':50000})
 
+data_dict = {"Yaw":Yaw,
+"Pitch": Pitch,
+"Roll": Roll
+}
 
-@app.callback(Output('live-graph', 'figure'),
-        [Input('graph-update', 'n_intervals')])
-def update_graph_scatter(n):
-    
+@app.callback(
+    dash.dependencies.Output('graphs','children'),
+     [dash.dependencies.Input('graph-update', 'n_intervals')]
+    )
+def update_graph(n):
+    graphs = []
+    data_names = ['Yaw', 'Pitch', 'Roll']
+    if len(data_names)>2:
+        class_choice = 'col s12 m6 l4'
+    elif len(data_names) == 2:
+        class_choice = 'col s12 m6 l6'
+    else:
+        class_choice = 'col s12'
+    lastRow = getLastRow("Dancer1")
     X.append(X[-1]+1)
-    #Y.append(Y[-1]+Y[-1]*random.uniform(-0.1,0.1))
-    #Y.append(dummyData())
-    Y.append(getLastRow("testTable"))
-    data = plotly.graph_objs.Scatter(
+    for data_name in data_names:
+        if (data_name == 'Yaw'):
+            Yaw.append(lastRow[0])
+        elif (data_name == 'Pitch'):
+            Pitch.append(lastRow[1])
+        else:
+            Roll.append(lastRow[2])
+        
+        data = go.Scatter(
             x=list(X),
-            y=list(Y),
+            y=list(data_dict[data_name]),
             name='Scatter',
             mode= 'lines+markers'
-            )#selects the range of values
-    return {'data': [data],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
-                                                yaxis=dict(range=[0,max(Y)]),)}
-
-
-
-
-
-
+            )
+        graphs.append(html.Div(dcc.Graph(
+            id=data_name,
+            animate=True,
+            figure={'data': [data],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
+                                                        yaxis=dict(range=[0,5]),
+                                                        #yaxis=dict(range=[min(data_dict[data_name]),max(data_dict[data_name])]),
+                                                        margin={'l':50,'r':1,'t':45,'b':30},
+                                                        title='{}'.format(data_name))}
+        )), className=class_choice))
+        
+    return graphs
 
 #Main function
 if __name__ == '__main__':
-    addSensorValues()
-    #print(sensorValues)
     app.run_server(debug=True)
+    
+
+
+
+
+
+
+
+
     
