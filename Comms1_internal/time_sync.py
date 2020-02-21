@@ -6,4 +6,15 @@ def calculate_clock_offset(beetle_timestamp_list):
     else:
         print("error in beetle timestamp")
 
+def calculate_ultra96_time(beetle_data_dict, clock_offset):
+    time_ultra96 = 0
+    for key in beetle_data_dict:
+        data_list = beetle_data_dict[key]
+        time_beetle = data_list[0]
+        if(time_beetle != 0):
+            time_ultra96 = time_beetle - clock_offset
+            return time_ultra96
+
+
+
 

@@ -43,7 +43,6 @@ void init(void* pvParameters)
 
     //readSensorData();
     processSendData();
-
     vTaskDelayUntil(&xCurrWakeTime, 200 / portTICK_PERIOD_MS);
   }
 }
@@ -81,4 +80,3 @@ void processSendData() {
   Serial.print('|');
   Serial.print(chksum);
   Serial.print('>');
-}
