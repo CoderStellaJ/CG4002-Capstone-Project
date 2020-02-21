@@ -11,7 +11,7 @@
 ```
 cd C:\Repository\CG4002-Capstone-Project\Comms2_external
 python eval_server.py 127.0.0.1 8888 6
-python3 eval_client.py 127.0.0.1 8888 6 cg40024002group6
+python eval_client.py 127.0.0.1 8888 6 cg40024002group6
 ```
 
 secret key (length is 16):
