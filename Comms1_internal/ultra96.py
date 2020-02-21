@@ -5,7 +5,7 @@ import concurrent
 from concurrent import futures
 import threading
 import time
-from time_calibration import *
+from time_sync import *
 
 # global variables
 beetle_addresses = ["1C:BA:8C:1D:30:22"]
@@ -414,6 +414,9 @@ if __name__ == '__main__':
         # remember to assign return value from result() to global data dicts!!
         beetle1_data_dict = data_process.result()
         print(beetle1_data_dict)
+        # synchronization delay
+        beetle1_time_ultra96 = calculate_ultra96_time(beetle1_data_dict, beetle1_clock_offset)
+        print("Beetle 1 ultra 96 time: ", beetle1_time_ultra96)
         [beetle1_data_dict.update({idx: []})
          for idx in range(1, 11)]
         """
