@@ -34,9 +34,4 @@ python eval_server.py 192.168.2.7 5050 6
 python3 eval_client.py 192.168.2.7 5050 6 cg40024002group6
 ```
 
-### Questions
-1. How to connect with dashboard server? to a DB?
-2. How do I put client python code onto Ultra96?
-3. Client error?
-4. Protocol design between beetle and Ultra96
 
