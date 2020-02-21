@@ -43,40 +43,40 @@ void init(void* pvParameters)
 
     //readSensorData();
     processSendData();
-
-    vTaskDelayUntil(&xCurrWakeTime, 2000 / portTICK_PERIOD_MS);
+    vTaskDelayUntil(&xCurrWakeTime, 200 / portTICK_PERIOD_MS);
   }
 }
 
 void processSendData() {
   memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
-  char send_timestamp[5];
-  char yaw[5];
-  char pitch[5];
-  char roll[5];
+  char timestamp[10];
+  char yaw[10];
+  char pitch[10];
+  char roll[10];
   int chksum = 0;
-  itoa(millis(), send_timestamp, 10);
-  Serial.print('D');
   strcat(transmit_buffer, "D");
-  Serial.print(send_timestamp);
-  strcat(transmit_buffer, send_timestamp);
+  Serial.print('D');
+  ultoa(millis(), timestamp, 10);
+  strcat(transmit_buffer, timestamp);
   strcat(transmit_buffer, ",");
+  Serial.print(timestamp);
   Serial.print(',');
-  Serial.print(12.23);
-  strcat(transmit_buffer, dtostrf(12.23, 5, 2, yaw));
-  Serial.print(15.34);
-  strcat(transmit_buffer, dtostrf(15.34, 5, 2, pitch));
-  Serial.print(17.26);
-  strcat(transmit_buffer, dtostrf(17.26, 5, 2, roll));
+  dtostrf(12.23, 5, 2, yaw);
+  strcat(transmit_buffer, yaw);
+  strcat(transmit_buffer, ",");
+  Serial.print(yaw);
+  Serial.print(',');
+  dtostrf(15.34, 5, 2, pitch);
+  strcat(transmit_buffer, pitch);
+  strcat(transmit_buffer, ",");
+  Serial.print(pitch);
+  Serial.print(',');
+  dtostrf(17.26, 5, 2, roll);
+  strcat(transmit_buffer, roll);
+  Serial.print(roll);
   for (int a = 0; a < strlen(transmit_buffer); a++) {
     chksum ^= transmit_buffer[a];
   }
-  strcat(transmit_buffer, "|");
   Serial.print('|');
   Serial.print(chksum);
-  /*char checksum_arr[4];
-  itoa(int(chksum), checksum_arr, 10);
-  for (int i = 0; i < strlen(checksum_arr); i++) {
-    Serial.print(checksum_arr[i]);
-  }*/
-}
+  Serial.print('>');
