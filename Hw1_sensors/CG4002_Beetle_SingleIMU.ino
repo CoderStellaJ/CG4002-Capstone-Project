@@ -26,6 +26,13 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
+// These 2 ypr values is to check whether there are sudden movements, if there are then set flag to true
+volatile float ypr_firstCheck[3] = {0.0, 0.0, 0.0}; // Variabe to store the 1st ypr value 
+volatile float ypr_lastCheck[3] = {0.0, 0.0, 0.0};  // Variable to store the 2nd ypr value 
+volatile float yawDiff = 0.0;
+volatile float pitchDiff = 0.0;
+volatile float rollDiff = 0.0;
+
 // Interrupt detection routine
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 void dmpDataReady() {
@@ -39,7 +46,7 @@ void getYPR() {
 
   // wait for MPU interrupt or extra packet(s) available
   while (!mpuInterrupt && fifoCount < packetSize) {
-      // other program behavior stuff here
+    // other program behavior stuff here
   }
 
   // reset interrupt flag and get INT_STATUS byte
@@ -51,26 +58,26 @@ void getYPR() {
 
   // check for overflow
   if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
-      // reset so we can continue cleanly
-      mpu.resetFIFO();
-      Serial.println(F("FIFO overflow!"));
+    // reset so we can continue cleanly
+    mpu.resetFIFO();
+    Serial.println(F("FIFO overflow!"));
 
   // otherwise, check for DMP data ready interrupt
   } else if (mpuIntStatus & 0x02) {
-      // wait for correct available data length
-      while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+    // wait for correct available data length
+    while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
 
-      // read a packet from FIFO
-      mpu.getFIFOBytes(fifoBuffer, packetSize);
-      
-      // track FIFO count here in case there is > 1 packet available
-      // (this lets us immediately read more without waiting for an interrupt)
-      fifoCount -= packetSize;
+    // read a packet from FIFO
+    mpu.getFIFOBytes(fifoBuffer, packetSize);
+    
+    // track FIFO count here in case there is > 1 packet available
+    // (this lets us immediately read more without waiting for an interrupt)
+    fifoCount -= packetSize;
 
-      // display Euler angles in degrees
-      mpu.dmpGetQuaternion(&q, fifoBuffer);
-      mpu.dmpGetGravity(&gravity, &q);
-      mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+    // display Euler angles in degrees
+    mpu.dmpGetQuaternion(&q, fifoBuffer);
+    mpu.dmpGetGravity(&gravity, &q);
+    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
   }
 }
 
@@ -93,12 +100,6 @@ void setup() {
   Serial.println(F("Testing device connections..."));
   Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
 
-  // wait for ready
-  Serial.println(F("\nSend any character to begin DMP programming and demo: "));
-  while (Serial.available() && Serial.read()); // empty buffer
-  while (!Serial.available());                 // wait for data
-  while (Serial.available() && Serial.read()); // empty buffer again
-
   // load and configure the DMP
   Serial.println(F("Initializing DMP..."));
   devStatus = mpu.dmpInitialize();
@@ -111,38 +112,80 @@ void setup() {
 
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
-      // turn on the DMP, now that it's ready
-      Serial.println(F("Enabling DMP..."));
-      mpu.setDMPEnabled(true);
+    // turn on the DMP, now that it's ready
+    Serial.println(F("Enabling DMP..."));
+    mpu.setDMPEnabled(true);
 
-      // enable Arduino interrupt detection
-      Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
-      attachInterrupt(0, dmpDataReady, RISING);
-      mpuIntStatus = mpu.getIntStatus();
+    // enable Arduino interrupt detection
+    Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
+    attachInterrupt(0, dmpDataReady, RISING);
+    mpuIntStatus = mpu.getIntStatus();
 
-      // set our DMP Ready flag so the main loop() function knows it's okay to use it
-      Serial.println(F("DMP ready! Waiting for first interrupt..."));
-      dmpReady = true;
+    // set our DMP Ready flag so the main loop() function knows it's okay to use it
+    Serial.println(F("DMP ready! Waiting for first interrupt..."));
+    dmpReady = true;
 
-      // get expected DMP packet size for later comparison
-      packetSize = mpu.dmpGetFIFOPacketSize();
+    // get expected DMP packet size for later comparison
+    packetSize = mpu.dmpGetFIFOPacketSize();
   } else {
-      // ERROR!
-      // 1 = initial memory load failed
-      // 2 = DMP configuration updates failed
-      // (if it's going to break, usually the code will be 1)
-      Serial.print(F("DMP Initialization failed (code "));
-      Serial.print(devStatus);
-      Serial.println(F(")"));
+    // ERROR!
+    // 1 = initial memory load failed
+    // 2 = DMP configuration updates failed
+    // (if it's going to break, usually the code will be 1)
+    Serial.print(F("DMP Initialization failed (code "));
+    Serial.print(devStatus);
+    Serial.println(F(")"));
   }
+
+  // Delay for approximately 10 seconds so that the MPU6050 can stabilise itself
+  delay(10000);
 }
 
 void loop() {
+  // Get two YPRs at the start to avoid FIFO overflow issues
   getYPR();
-  Serial.print("ypr\t");
-  Serial.print(ypr[0] * 180/M_PI);
-  Serial.print("\t");
-  Serial.print(ypr[1] * 180/M_PI);
-  Serial.print("\t");
-  Serial.println(ypr[2] * 180/M_PI);
+  getYPR();
+  
+  // Get an initial YPR value
+  getYPR();
+  ypr_firstCheck[0] = ypr[0] * 180/M_PI;
+  ypr_firstCheck[1] = ypr[1] * 180/M_PI;
+  ypr_firstCheck[2] = ypr[2] * 180/M_PI;
+
+  // Set a small delay to get next YPR value
+  delay(5);
+  
+  // Get a secondary YPR value
+  getYPR();
+  ypr_lastCheck[0] = ypr[0] * 180/M_PI;
+  ypr_lastCheck[1] = ypr[1] * 180/M_PI;
+  ypr_lastCheck[2] = ypr[2] * 180/M_PI;
+
+  // Compute the differences between these 2 YPR values to detect if there is a sudden movement 
+  yawDiff = ypr_lastCheck[0] - ypr_firstCheck[0];
+  pitchDiff = ypr_lastCheck[1] - ypr_firstCheck[1];
+  rollDiff = ypr_lastCheck[2] - ypr_firstCheck[2];
+  
+  // Have to decide on a good thresholding value to determine the flag
+  // Serial.println(abs(yawDiff));
+  // Serial.println(abs(pitchDiff));
+  // Serial.println(abs(rollDiff));
+
+  // Only start taking data if there is a spike is found in either one of the three differences 
+  if (abs(yawDiff) >= 20 || abs(pitchDiff) >= 10 || abs(rollDiff) >= 10) {
+    // Loop to get 50 samples from MPU6050 at the frequency of 20Hz
+    for (int i = 0; i < 50; i++) {
+      getYPR();
+      Serial.print("ypr\t");
+      Serial.print(ypr[0] * 180/M_PI);
+      Serial.print("\t");
+      Serial.print(ypr[1] * 180/M_PI);
+      Serial.print("\t");
+      Serial.println(ypr[2] * 180/M_PI);
+      delay(50);
+    }
+  }
+
+  Serial.println("Completed");
+  delay(99999999);
 }
