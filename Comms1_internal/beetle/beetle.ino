@@ -1,8 +1,7 @@
 #include <Arduino_FreeRTOS.h>
 
 char transmit_buffer[19];
-char clock_sync_receiving_timestamp[5];
-char clock_sync_sending_timestamp[5];
+char timestamp[10];
 
 void setup()
 {
@@ -43,13 +42,13 @@ void init(void* pvParameters)
 
     //readSensorData();
     processSendData();
-    vTaskDelayUntil(&xCurrWakeTime, 200 / portTICK_PERIOD_MS);
+    vTaskDelayUntil(&xCurrWakeTime, 500 / portTICK_PERIOD_MS);
   }
 }
 
 void processSendData() {
   memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
-  char timestamp[10];
+  memset(&timestamp[0], 0, sizeof(timestamp));
   char yaw[10];
   char pitch[10];
   char roll[10];
@@ -80,3 +79,4 @@ void processSendData() {
   Serial.print('|');
   Serial.print(chksum);
   Serial.print('>');
+}

@@ -361,16 +361,18 @@ def processData():
             checksum_1 ^= ord(char)
             if comma_count_1 == 1:  # already past timestamp value
                 timestamp_flag_1 = False
-                beetle1_data_dict[beetle1_dataset_count].append(
-                    int(beetle1_datastring))
+                beetle1_data_dict.setdefault(
+                    beetle1_dataset_count, []).append(int(beetle1_datastring))
+                # beetle1_data_dict[beetle1_dataset_count].append(
+                #    int(beetle1_datastring))
                 float_flag_1 = True
             else:
                 beetle1_data_dict[beetle1_dataset_count].append(
                     float(beetle1_datastring))
             beetle1_datastring = ""
         elif char == '>':  # end of current dataset
-            print("checksum_1: %i" % (checksum_1))
-            print("beetle1_datastring: %i" % (int(beetle1_datastring)))
+            print("ultra96 checksum: %i" % (checksum_1))
+            print("beetle checksum: %i" % (int(beetle1_datastring)))
             # received dataset is invalid; drop the dataset from data dictionary
             if checksum_1 != int(beetle1_datastring):
                 del beetle1_data_dict[beetle1_dataset_count]
@@ -415,11 +417,10 @@ if __name__ == '__main__':
         beetle1_data_dict = data_process.result()
         print(beetle1_data_dict)
         # synchronization delay
-        beetle1_time_ultra96 = calculate_ultra96_time(beetle1_data_dict, beetle1_clock_offset)
+        beetle1_time_ultra96 = calculate_ultra96_time(
+            beetle1_data_dict, beetle1_clock_offset)
         # max(beetle3_time_ultra96, ...) - min(beetle1_time_ultra96, ...)
         print("Beetle 1 ultra 96 time: ", beetle1_time_ultra96)
-        [beetle1_data_dict.update({idx: []})
-         for idx in range(1, 11)]
         """
         ml_future = futures.ProcessPoolExecutor(max_workers=os.cpu_count())
         ml_process = ml_future.submit(executeMachineLearning)
