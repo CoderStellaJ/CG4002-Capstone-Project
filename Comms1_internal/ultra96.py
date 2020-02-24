@@ -84,7 +84,6 @@ def initHandshake(beetle_peripheral, address):
                                 print("handshake succeeded with %s" % (
                                     address))
                                 # function for time calibration
-                                print(timestamp_dict)
                                 beetle1_clock_offset = calculate_clock_offset(
                                     timestamp_dict[address])
                                 print("beetle1 clock offset: ",
