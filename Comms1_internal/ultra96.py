@@ -51,7 +51,7 @@ class Delegate(btle.DefaultDelegate):
                             buffer_dict[beetle_addresses[idx]] = ""
                             packet_count_dict[beetle_addresses[idx]] = 0
                             print("beetle: %s" % (beetle_addresses[idx]))
-                            print(timestamp_dict[[beetle_addresses[idx]])
+                            print(timestamp_dict[beetle_addresses[idx]])
                             return
                         elif char != '>':
                             if char == '|':  # signify start of next timestamp
@@ -60,7 +60,6 @@ class Delegate(btle.DefaultDelegate):
                                 timestamp_string_dict[beetle_addresses[idx]] = ""
                             else:
                                 timestamp_string_dict[beetle_addresses[idx]] += char
-
 
 
 def initHandshake(beetle_peripheral, address):
@@ -85,6 +84,7 @@ def initHandshake(beetle_peripheral, address):
                                 print("handshake succeeded with %s" % (
                                     address))
                                 # function for time calibration
+                                print(timestamp_dict)
                                 beetle1_clock_offset = calculate_clock_offset(
                                     timestamp_dict[address])
                                 print("beetle1 clock offset: ",
@@ -128,6 +128,8 @@ def reestablish_connection(beetle_peri, address):
             print("reconnecting to %s" % (address))
             beetle_peri.connect(address)
             print("re-connected to %s" % (address))
+            beetles_connection_flag_dict.update(
+                {beetle_peri.addr: True})
             getBeetleData(beetle_peri)
         except:
             print("error reconnecting to %s" % (address))
@@ -143,77 +145,79 @@ def getBeetleData(beetle_peri):
             if beetle_peri.waitForNotifications(20):
                 print("getting data...")
                 # if number of datasets received from all beetles exceed expectation
-                if packet_count_dict[beetle_peri.addr] >= 20:
+                if packet_count_dict[beetle_peri.addr] >= 4:
                     print("sufficient datasets received. Processing data now")
-                    packet_count_dict[beetle_peri.addr] = 0  # reset for next dance move
-                    dataset_count_dict[beetle_peri.addr] = 0 # reset for next dance move
+                    # reset for next dance move
+                    packet_count_dict[beetle_peri.addr] = 0
+                    # reset for next dance move
+                    dataset_count_dict[beetle_peri.addr] = 0
                     return
                 continue
         except Exception as e:
             print("disconnecting beetle_peri: %s" % (beetle_peri.addr))
+            beetles_connection_flag_dict.update(
+                {beetle_peri.addr: False})
             reestablish_connection(beetle_peri, beetle_peri.addr)
 
 
 @ray.remote
 def processData(address, buffer_obj, dataset_count_obj, timestamp_obj, checksum_obj, float_obj, datastring_obj, comma_obj):
-    buffer_dict = ray.get(buffer_obj)
-    dataset_count_dict = ray.get(dataset_count_obj)
-    timestamp_flag_dict = ray.get(timestamp_obj)
-    checksum_dict = ray.get(checksum_obj)
-    float_flag_dict = ray.get(float_obj)
-    datastring_dict = ray.get(datastring_obj)
-    comma_count_dict = ray.get(comma_obj)
+    # use buffer_obj as it is, no need for ray.get() then assigning it to buffer_dict
+    buffer_dict = buffer_obj
+    dataset_count_dict = dataset_count_obj
+    timestamp_flag_dict = timestamp_obj
+    checksum_dict = checksum_obj
+    float_flag_dict = float_obj
+    datastring_dict = datastring_obj
+    comma_count_dict = comma_obj
+    data_dict = {address: {}}
+    [data_dict[address].update({idx: []})
+     for idx in range(1, 3)]
 
-    for address in beetle_addresses:
-        for char in buffer_dict[address]:
-            if char == 'D':  # start of new dataset
-
-
-    for char in beetle1_buffer_dict["1C:BA:8C:1D:30:22"]:
+    for char in buffer_dict[address]:
         if char == 'D':  # start of new dataset
-            beetle1_dataset_count += 1
-            timestamp_flag_1 = True
-            checksum_1 ^= ord(char)
-        if char != 'D' and char != '.' and char != ',' and char != '|' and char != '>' and (float_flag_1 is True or timestamp_flag_1 is True):
-            beetle1_datastring += char
-            checksum_1 ^= ord(char)
+            dataset_count_dict[address] += 1
+            timestamp_flag_dict[address] = True
+            checksum_dict[address] ^= ord(char)
+        if char != 'D' and char != '.' and char != ',' and char != '|' and char != '>' and (float_flag_dict[address] is True or timestamp_flag_dict[address] is True):
+            datastring_dict[address] += char
+            checksum_dict[address] ^= ord(char)
         elif char == '.':  # integer still belongs to original floating point value
-            beetle1_datastring += char
-            checksum_1 ^= ord(char)
+            datastring_dict[address] += char
+            checksum_dict[address] ^= ord(char)
         elif char == ',':  # next value
-            comma_count_1 += 1
-            checksum_1 ^= ord(char)
-            if comma_count_1 == 1:  # already past timestamp value
-                timestamp_flag_1 = False
-                beetle1_data_dict.setdefault(
-                    beetle1_dataset_count, []).append(int(beetle1_datastring))
-                # beetle1_data_dict[beetle1_dataset_count].append(
-                #    int(beetle1_datastring))
-                float_flag_1 = True
+            comma_count_dict[address] += 1
+            checksum_dict[address] ^= ord(char)
+            if comma_count_dict[address] == 1:  # already past timestamp value
+                timestamp_flag_dict[address] = False
+                data_dict[address].setdefault(
+                    dataset_count_dict[address], []).append(int(datastring_dict[address]))
+                float_flag_dict[address] = True
             else:
-                beetle1_data_dict[beetle1_dataset_count].append(
-                    float(beetle1_datastring))
-            beetle1_datastring = ""
+                data_dict[address][dataset_count_dict[address]].append(
+                    float(datastring_dict[address]))
+            datastring_dict[address] = ""
         elif char == '>':  # end of current dataset
-            print("ultra96 checksum: %i" % (checksum_1))
-            print("beetle checksum: %i" % (int(beetle1_datastring)))
+            print("ultra96 checksum: %i" % (checksum_dict[address]))
+            print("beetle checksum: %i" % (int(datastring_dict[address])))
             # received dataset is invalid; drop the dataset from data dictionary
-            if checksum_1 != int(beetle1_datastring):
-                del beetle1_data_dict[beetle1_dataset_count]
-            beetle1_datastring = ""  # reset datastring to prepare for next dataset
-            checksum_1 = 0  # reset checksum to prepare for next dataset
-            comma_count_1 = 0
-        elif char == '|' or (float_flag_1 is False and timestamp_flag_1 is False):
-            if float_flag_1 is True:
-                beetle1_data_dict[beetle1_dataset_count].append(
-                    float(beetle1_datastring))
-                beetle1_datastring = ""  # clear datastring to prepare take in checksum from beetle
-                float_flag_1 = False
+            if checksum_dict[address] != int(datastring_dict[address]):
+                del data_dict[address][dataset_count_dict[address]]
+            # reset datastring to prepare for next dataset
+            datastring_dict[address] = ""
+            # reset checksum to prepare for next dataset
+            checksum_dict[address] = 0
+            comma_count_dict[address] = 0
+        elif char == '|' or (float_flag_dict[address] is False and timestamp_flag_dict[address] is False):
+            if float_flag_dict[address] is True:
+                data_dict[address][dataset_count_dict[address]].append(
+                    float(datastring_dict[address]))
+                # clear datastring to prepare take in checksum from beetle
+                datastring_dict[address] = ""
+                float_flag_dict[address] = False
             elif char != '|' and char != '>':
-                beetle1_datastring += char
-
-    # remember to return the data dicts here as they wont get updated at global level!!
-    return beetle1_data_dict
+                datastring_dict[address] += char
+    return data_dict
 
 
 """def executeMachineLearning():"""
@@ -224,51 +228,53 @@ def processData(address, buffer_obj, dataset_count_obj, timestamp_obj, checksum_
 
 if __name__ == '__main__':
     # global variables
-    beetle_addresses= ["1C:BA:8C:1D:30:22"]
-    global_delegate_obj= []
-    global_beetle_periphs= []
-    beetles_connection_flag_dict= {}  # {beetle_address1:handshakeflag1,.....}
-    handshake_flag_dict= {"1C:BA:8C:1D:30:22": True}
-    buffer_dict= {"1C:BA:8C:1D:30:22": ""}
+    beetle_addresses = ["1C:BA:8C:1D:30:22"]
+    global_delegate_obj = []
+    global_beetle_periphs = []
+    beetles_connection_flag_dict = {}  # {beetle_address1:handshakeflag1,.....}
+    handshake_flag_dict = {"1C:BA:8C:1D:30:22": True}
+    buffer_dict = {"1C:BA:8C:1D:30:22": ""}
     # data global variables
-    beetle1_data_dict= {"1C:BA:8C:1D:30:22": {}}
-    beetle2_data_dict= {}
-    beetle3_data_dict= {}
-    beetle1_datastring= ""
-    beetle2_datastring= ""
-    beetle3_datastring= ""
-    packet_count_dict= {"1C:BA:8C:1D:30:22": 0}
-    dataset_count_dict= {"1C:BA:8C:1D:30:22": 0}
-    float_flag_dict= {"1C:BA:8C:1D:30:22": False}
-    timestamp_flag_dict= {"1C:BA:8C:1D:30:22": False}
-    comma_count_dict= {"1C:BA:8C:1D:30:22": 0}
-    checksum_dict= {"1C:BA:8C:1D:30:22": 0}
+    beetle1_data_dict = {"1C:BA:8C:1D:30:22": {}}
+    beetle2_data_dict = {}
+    beetle3_data_dict = {}
+    datastring_dict = {"1C:BA:8C:1D:30:22": ""}
+    beetle1_datastring = ""
+    beetle2_datastring = ""
+    beetle3_datastring = ""
+    packet_count_dict = {"1C:BA:8C:1D:30:22": 0}
+    dataset_count_dict = {"1C:BA:8C:1D:30:22": 0}
+    float_flag_dict = {"1C:BA:8C:1D:30:22": False}
+    timestamp_flag_dict = {"1C:BA:8C:1D:30:22": False}
+    comma_count_dict = {"1C:BA:8C:1D:30:22": 0}
+    checksum_dict = {"1C:BA:8C:1D:30:22": 0}
     # clock synchronization global variables
-    timestamp_string_dict= {{"1C:BA:8C:1D:30:22": ""}
-    clocksync_flag_dict= {"1C:BA:8C:1D:30:22": False}
-    timestamp_dict= {"1C:BA:8C:1D:30:22": []}
+    timestamp_string_dict = {"1C:BA:8C:1D:30:22": ""}
+    clocksync_flag_dict = {"1C:BA:8C:1D:30:22": False}
+    timestamp_dict = {"1C:BA:8C:1D:30:22": []}
+    beetle1_clock_offset = 0
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle_periphs.append(0) for idx in range(len(beetle_addresses))]
     [beetles_connection_flag_dict.update({beetle_addresses[idx]:False})
-    for idx in range(len(beetle_addresses))]
+     for idx in range(len(beetle_addresses))]
     [beetle1_data_dict["1C:BA:8C:1D:30:22"].update({idx: []})
-    for idx in range(1, 11)]
+     for idx in range(1, 3)]
     [beetle2_data_dict.update({idx: []})
-    for idx in range(1, 11)]
+     for idx in range(1, 3)]
     [beetle3_data_dict.update({idx: []})
-    for idx in range(1, 11)]
+     for idx in range(1, 3)]
 
     ray.init()
 
     # max_workers = number of beetles
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as connection_executor:
-        connection_futures= {connection_executor.submit(
+        connection_futures = {connection_executor.submit(
             establish_connection, address): address for address in beetle_addresses}
     connection_executor.shutdown(wait=True)
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as data_executor:
-            receive_data_futures= {data_executor.submit(
+            receive_data_futures = {data_executor.submit(
                 getBeetleData, beetle): beetle for beetle in global_beetle_periphs}
         data_executor.shutdown(wait=True)
         buffer_obj = ray.put(buffer_dict)
@@ -279,10 +285,13 @@ if __name__ == '__main__':
         datastring_obj = ray.put(datastring_dict)
         comma_obj = ray.put(comma_count_dict)
         for address in beetle_addresses:
-            processData.remote(address, buffer_obj, dataset_count_obj, timestamp_obj,
-                               checksum_obj, float_obj, datastring_obj, comma_obj)
-
+            data_dict_obj = processData.remote(address, buffer_obj, dataset_count_obj, timestamp_obj,
+                                               checksum_obj, float_obj, datastring_obj, comma_obj)
+            if "1C:BA:8C:1D:30:22" in ray.get(data_dict_obj):
+                beetle1_data_dict = ray.get(data_dict_obj)
+                buffer_dict["1C:BA:8C:1D:30:22"] = "" # reset buffer for next dance move
         print(beetle1_data_dict)
+        
         # synchronization delay
         beetle1_time_ultra96= calculate_ultra96_time(
             beetle1_data_dict, beetle1_clock_offset)

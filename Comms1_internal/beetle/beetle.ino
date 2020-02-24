@@ -2,6 +2,7 @@
 
 char transmit_buffer[19];
 char timestamp[10];
+bool is_new_move = false;
 
 void setup()
 {
@@ -16,7 +17,6 @@ void loop() {
 
 void receiveHandshakeAndClockSync()
 {
-  //char timestamp[15];
   while (1) {
     if (Serial.available() && Serial.read() == 'H') {
       Serial.print('A');
@@ -36,26 +36,31 @@ void receiveHandshakeAndClockSync()
 
 void init(void* pvParameters)
 {
+  char timestamp[10];
+  ultoa(millis(), timestamp, 10);
   while (1)
   {
     TickType_t xCurrWakeTime = xTaskGetTickCount();
 
     //readSensorData();
-    processSendData();
+    /*if (is_new_move) {
+      ultoa(millis(), timestamp, 10);
+    }*/
+    processSendData(timestamp);
     vTaskDelayUntil(&xCurrWakeTime, 500 / portTICK_PERIOD_MS);
   }
 }
 
-void processSendData() {
+void processSendData(char timestamp[]) {
   memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
-  memset(&timestamp[0], 0, sizeof(timestamp));
+  //memset(&timestamp[0], 0, sizeof(timestamp));
   char yaw[10];
   char pitch[10];
   char roll[10];
   int chksum = 0;
   strcat(transmit_buffer, "D");
   Serial.print('D');
-  ultoa(millis(), timestamp, 10);
+  //ultoa(millis(), timestamp, 10);
   strcat(transmit_buffer, timestamp);
   strcat(transmit_buffer, ",");
   Serial.print(timestamp);
