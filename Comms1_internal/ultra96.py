@@ -66,6 +66,9 @@ def initHandshake(beetle_peripheral, address):
     global timestamp_dict
     global clocksync_flag_dict
     global beetle1_clock_offset
+    global beetle2_clock_offset
+    global beetle3_clock_offset
+
     ultra96_sending_timestamp = time.time() * 1000
 
     for bdAddress, boolFlag in beetles_connection_flag_dict.items():
@@ -252,6 +255,8 @@ if __name__ == '__main__':
     clocksync_flag_dict = {"1C:BA:8C:1D:30:22": False}
     timestamp_dict = {"1C:BA:8C:1D:30:22": []}
     beetle1_clock_offset = 0
+    beetle2_clock_offset = 0
+    beetle3_clock_offset = 0
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle_periphs.append(0) for idx in range(len(beetle_addresses))]
@@ -294,8 +299,20 @@ if __name__ == '__main__':
         # synchronization delay
         beetle1_time_ultra96= calculate_ultra96_time(
             beetle1_data_dict, beetle1_clock_offset)
-        # max(beetle3_time_ultra96, ...) - min(beetle1_time_ultra96, ...)
+
+        beetle2_time_ultra96 = calculate_ultra96_time(
+            beetle2_data_dict, beetle2_clock_offset)
+
+        beetle3_time_ultra96 = calculate_ultra96_time(
+            beetle3_data_dict, beetle3_clock_offset)
+
+        sync_delay = max(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96) - min(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96)
+
         print("Beetle 1 ultra 96 time: ", beetle1_time_ultra96)
+        print("Beetle 2 ultra 96 time: ", beetle2_time_ultra96)
+        print("Beetle 3 ultra 96 time: ", beetle3_time_ultra96)
+        print("Synchronization delay is: ", sync_delay)
+
         """
         ml_future = futures.ProcessPoolExecutor(max_workers=None)
         ml_process = ml_future.submit(executeMachineLearning)
