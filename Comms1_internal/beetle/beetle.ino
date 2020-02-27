@@ -1,18 +1,20 @@
-#include <Arduino_FreeRTOS.h>
-
 char transmit_buffer[19];
 char timestamp[10];
 bool is_new_move = false;
-
 void setup()
 {
   Serial.begin(115200);
   receiveHandshakeAndClockSync();
-  xTaskCreate(init, "init", 100, NULL, 1, NULL);
 }
 
 void loop() {
-
+  if (!is_new_move) {
+    ultoa(millis(), timestamp, 10);
+    is_new_move = true;
+  }
+  ultoa(millis(), timestamp, 10);
+  processSendData(timestamp);
+  delay(1000);
 }
 
 void receiveHandshakeAndClockSync()
@@ -34,33 +36,13 @@ void receiveHandshakeAndClockSync()
   }
 }
 
-void init(void* pvParameters)
-{
-  char timestamp[10];
-  ultoa(millis(), timestamp, 10);
-  while (1)
-  {
-    TickType_t xCurrWakeTime = xTaskGetTickCount();
-
-    //readSensorData();
-    /*if (is_new_move) {
-      ultoa(millis(), timestamp, 10);
-    }*/
-    processSendData(timestamp);
-    vTaskDelayUntil(&xCurrWakeTime, 500 / portTICK_PERIOD_MS);
-  }
-}
-
 void processSendData(char timestamp[]) {
-  memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
-  //memset(&timestamp[0], 0, sizeof(timestamp));
   char yaw[10];
   char pitch[10];
   char roll[10];
   int chksum = 0;
   strcat(transmit_buffer, "D");
   Serial.print('D');
-  //ultoa(millis(), timestamp, 10);
   strcat(transmit_buffer, timestamp);
   strcat(transmit_buffer, ",");
   Serial.print(timestamp);
@@ -84,4 +66,5 @@ void processSendData(char timestamp[]) {
   Serial.print('|');
   Serial.print(chksum);
   Serial.print('>');
+  memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
 }
