@@ -54,7 +54,7 @@ def createTable(tableName, *columnNames):
     first = True
     for column in columns:
         if first:
-            query += "\n" + column + " NUMERIC NOT NULL"
+            query += "\n" + column + " TEXT NOT NULL"
             first = False
         else:
             query += ", \n" + column + " NUMERIC NOT NULL"
@@ -73,34 +73,40 @@ def change():
     print(i)
     i = i+1
     if(i==10):
-        i = i - 1
+        i = 0
 
-def fakeData():
+def fakeData(Dancer):
     global i
-    threading.Timer(1.0, fakeData).start()
+    threading.Timer(2.0, fakeData, args=[Dancer]).start()
     arr = ["shoutout","transition",
            "weightlift","transition",
            "muscle","transition",
            "shoutout","transition",
            "weightlift","transition"]
     if (arr[i] == "shoutout"):
-        addValue("Dancer1",1.0, 1.0, 1.0)
+        addValue(Dancer,"shoutout",1.0, 1.0, 1.0)
     elif (arr[i] == "weightlift"):
-        addValue("Dancer1",2.0, 3.0, 5.0)
+        addValue(Dancer, "weightlift",2.0, 3.0, 5.0)
     elif (arr[i] == "muscle"):
-        addValue("Dancer1",3.0, 4.0, 4.0)
+        addValue(Dancer,"muscle",3.0, 4.0, 4.0)
     elif (arr[i] == "transition"):
-        addValue("Dancer1", 0, 0, 0)
-    print(showTable("Dancer1"))
+        addValue(Dancer, "transition", 0, 0, 0)
+    #print(showTable("Dancer1"))
     
 
 #testing
 if __name__ == '__main__':
+
     
     change()
-    fakeData()
-    #createTable("Dancer1", "Yaw", "Pitch", "Roll")
-    #showTable("Dancer1")
+    fakeData("Dancer1")
+    fakeData("Dancer2")
+    fakeData("Dancer3")
+    #createTable("Dancer2", "GroundTruth", "Yaw", "Pitch", "Roll")
+    #createTable("Dancer3", "GroundTruth", "Yaw", "Pitch", "Roll")
+    #showTable("Dancer3")
+    #showTable("Dancer2")
+    #showTable("Dancer3")
     #clearTable("Dancer1")
     #addValue("test", "NEWNEWNNewValueHellos", "IdasdsssS", "32.0")
     #addValue("Hello","1.0","2.0", "3.0")
