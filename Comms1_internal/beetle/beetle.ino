@@ -1,5 +1,6 @@
 char transmit_buffer[19];
-char timestamp[15];
+char timestamp[10];
+unsigned int time_sync;
 bool is_new_move = false;
 void setup()
 {
@@ -9,10 +10,7 @@ void setup()
 
 void loop() {
   if (!is_new_move) {
-    const unsigned long time_sync = millis();
-    ultoa(time_sync, timestamp, 10);
-    is_new_move = true;
-    processSendData();
+    ultoa(millis(), timestamp, 10);
   }
   processSendData();
   delay(50);
@@ -44,9 +42,15 @@ void processSendData() {
   int chksum = 0;
   strcat(transmit_buffer, "D");
   Serial.print('D');
-  strcat(transmit_buffer, timestamp);
+  if (!is_new_move) {
+    strcat(transmit_buffer, timestamp);
+    Serial.print(timestamp);
+    is_new_move = true;
+  } else {
+    strcat(transmit_buffer, "1");
+    Serial.print('1');
+  }
   strcat(transmit_buffer, ",");
-  Serial.print(timestamp);
   Serial.print(',');
   dtostrf(12.23, 5, 2, yaw);
   strcat(transmit_buffer, yaw);
