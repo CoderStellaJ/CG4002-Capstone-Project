@@ -52,40 +52,40 @@ def init_layout(refresh_interval):
         #Defines a graph
     app.layout = html.Div([
         dbc.Row([
-            
+
             dbc.Col([html.H5('Dancer 1'),
                     html.Div(children=html.Div(id='graphsD1', className = "row")),
                 dcc.Interval(
                     id='graph-update',
-                    interval=1000,
+                    interval= 1000,
                     n_intervals=0
                     ),
                      html.Div(style={'font-size':'80%'},id='Dancer1GT'),
                      html.Div(style={'font-size':'80%'},id='Dancer1Output')
                      ]),
-            
+
             dbc.Col([html.H5('Dancer 2'),
                      html.Div(children=html.Div(id='graphsD2', className = "row")),
                      html.Div(style={'font-size':'80%'},id='Dancer2GT'),
                      html.Div(style={'font-size':'80%'},id='Dancer2Output')
                      ]),
-            
+
             dbc.Col([html.H5('Dancer 3'),
                      html.Div(children=html.Div(id='graphsD3', className = "row")),
                      html.Div(style={'font-size':'80%'},id='Dancer3GT'),
                      html.Div(style={'font-size':'80%'},id='Dancer3Output')
                      ])
                     #style={'float': 'left', 'margin': "5px 10px 10px 5px"}
-                        #Figure out a way to make the dancer thing remian  
-                           
+                        #Figure out a way to make the dancer thing remian
+
             ]),
-        
+
         ], className="container",style={'width':'98%','margin-left':10,'margin-right':10,'max-width':5000000}
 
         )
 
 
-#Data dictionary to print out a value of 
+#Data dictionary to print out a value of
 data_dict = {
 "Yaw1":Yaw1,
 "Pitch1": Pitch1,
@@ -95,17 +95,17 @@ data_dict = {
 "Roll2": Roll2,
 "Yaw3":Yaw3,
 "Pitch3": Pitch3,
-"Roll3": Roll3    
+"Roll3": Roll3
 }
 
 def ML(lastRow):
     #Pseudo Machine Learning Algorithmn
     if(lastRow[1] == 1.0 and lastRow[2] == 1.0 and lastRow[3] == 1.0):
-        returnStr = "shoutout"
+        returnStr = "shoutout - Position 1,2,3"
     elif(lastRow[1] == 2.0 and lastRow[2] == 3.0 and lastRow[3] == 5.0):
-        returnStr = "weightlift"
+        returnStr = "weightlift - Position 2,3,1"
     elif(lastRow[1] == 3.0 and lastRow[2] == 4.0 and lastRow[3] == 4.0):
-        returnStr = "muscle"
+        returnStr = "muscle - Position 3,1,2"
     elif(lastRow[1] == 0 and lastRow[2] == 0 and lastRow[3] == 0):
         returnStr = "transition"
     return returnStr
@@ -119,7 +119,7 @@ def ML(lastRow):
      dash.dependencies.Output('Dancer2Output','children'),
      dash.dependencies.Output('Dancer2GT','children'),
      dash.dependencies.Output('Dancer3Output','children'),
-     dash.dependencies.Output('Dancer3GT','children') 
+     dash.dependencies.Output('Dancer3GT','children')
     ],
     [dash.dependencies.Input('graph-update', 'n_intervals')]
     )
@@ -138,11 +138,11 @@ def update_graph(n):
     returnStr1 = ML(lastRow1)
     returnStr2 = ML(lastRow2)
     returnStr3 = ML(lastRow3)
-    
+
 
     #Append the timing for all graphs
     X.append(X[-1]+1)
-    
+
     for data_name in data_names:
         if (data_name == 'Yaw1'):
             Yaw1.append(lastRow1[1])
@@ -173,53 +173,6 @@ def update_graph(n):
 
         #get last digit of the data_name to correspond to the dancer
         dancerNo = data_name[-1]
-        
-        #Add the graph to the graphs
-        if(dancerNo == '1'):
-            graphs.append(dbc.Col(html.Div(dcc.Graph(
-                id=data_name,
-                animate=True,
-                figure={'data': [data],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
-                                                            yaxis=dict(range=[0,5]),
-                                                            #yaxis=dict(range=[min(data_dict[data_name]),max(data_dict[data_name])]),
-                                                            margin={'l':10,'r':1,'t':30,'b':30},
-                                                            title='{}'.format(data_name),
-                                                            font=dict(family='Courier New, monospace', size=12, color='#7f7f7f'),
-                                                            height = 250,
-                                                            width = 300
-                                                            )}
-            ))))
-
-        #add graph to graph2
-        elif(dancerNo == '2'):
-            graphs2.append(dbc.Col(html.Div(dcc.Graph(
-                id=data_name,
-                animate=True,
-                figure={'data': [data],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
-                                                            yaxis=dict(range=[0,5]),
-                                                            margin={'l':10,'r':1,'t':30,'b':30},
-                                                            title='{}'.format(data_name),
-                                                            font=dict(family='Courier New, monospace', size=12, color='#7f7f7f'),
-                                                            height = 250,
-                                                            width = 300
-                                                            )}
-            
-            ))))
-        #add graph to graph3
-        elif(dancerNo == '3'):
-            graphs3.append(dbc.Col(html.Div(dcc.Graph(
-                id=data_name,
-                animate=True,
-                figure={'data': [data],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
-                                                            yaxis=dict(range=[0,5]),
-                                                            margin={'l':10,'r':1,'t':30,'b':30},
-                                                            title='{}'.format(data_name),
-                                                            font=dict(family='Courier New, monospace', size=12, color='#7f7f7f'),
-                                                            height = 250,
-                                                            width = 300
-                                                            )}
-            
-            ))))
 
         #Add the graph to the graphs
         if(dancerNo == '1'):
@@ -250,7 +203,7 @@ def update_graph(n):
                                                             height = 250,
                                                             width = 300
                                                             )}
-            
+
             ))))
         #add graph to graph3
         elif(dancerNo == '3'):
@@ -265,9 +218,11 @@ def update_graph(n):
                                                             height = 250,
                                                             width = 300
                                                             )}
-            
+
             ))))
-            
+
+    
+
     return [graphs,
             graphs2,
             graphs3,
@@ -280,18 +235,8 @@ def update_graph(n):
             ]
 
 
-    
+
 #Main function
 if __name__ == '__main__':
     #app.run_server(debug=True)
     main()
-    
-
-
-
-
-
-
-
-
-    
