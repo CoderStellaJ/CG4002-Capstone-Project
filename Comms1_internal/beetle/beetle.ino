@@ -1,6 +1,7 @@
 char transmit_buffer[19];
 char timestamp[10];
-bool is_new_move = false;
+volatile unsigned long time_sync;
+volatile bool is_new_move = false;
 void setup()
 {
   Serial.begin(115200);
@@ -9,12 +10,11 @@ void setup()
 
 void loop() {
   if (!is_new_move) {
-    ultoa(millis(), timestamp, 10);
+    time_sync = millis();
     is_new_move = true;
   }
-  ultoa(millis(), timestamp, 10);
-  processSendData(timestamp);
-  delay(1000);
+  processSendData(time_sync);
+  delay(50);
 }
 
 void receiveHandshakeAndClockSync()
@@ -36,16 +36,17 @@ void receiveHandshakeAndClockSync()
   }
 }
 
-void processSendData(char timestamp[]) {
+void processSendData(unsigned long time_sync) {
   char yaw[10];
   char pitch[10];
   char roll[10];
   int chksum = 0;
   strcat(transmit_buffer, "D");
   Serial.print('D');
+  ultoa(time_sync, timestamp, 10);
   strcat(transmit_buffer, timestamp);
   strcat(transmit_buffer, ",");
-  Serial.print(timestamp);
+  Serial.print(time_sync);
   Serial.print(',');
   dtostrf(12.23, 5, 2, yaw);
   strcat(transmit_buffer, yaw);
