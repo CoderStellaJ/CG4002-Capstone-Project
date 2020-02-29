@@ -32,9 +32,11 @@ class Delegate(btle.DefaultDelegate):
                 print("receiving data from %s" % (beetle_addresses[idx]))
                 print("data: " + data.decode('UTF-8'))
                 if handshake_flag_dict[beetle_addresses[idx]] is False:
-                    if 'D' in data.decode('UTF-8') and ((packet_count_dict[beetle_addresses[idx]] % 1) != 0.5):  # start of dataset
+                    # start of dataset
+                    if 'D' in data.decode('UTF-8') and ((packet_count_dict[beetle_addresses[idx]] % 1) != 0.5):
                         packet_count_dict[beetle_addresses[idx]] += 0.5
-                    if '>' in data.decode('UTF-8') and ((packet_count_dict[beetle_addresses[idx]] % 1) == 0.5):  # end of dataset
+                    # end of dataset
+                    if '>' in data.decode('UTF-8') and ((packet_count_dict[beetle_addresses[idx]] % 1) == 0.5):
                         packet_count_dict[beetle_addresses[idx]] += 0.5
                 buffer_dict[beetle_addresses[idx]] += data.decode('UTF-8')
                 for char in buffer_dict[beetle_addresses[idx]]:
@@ -63,9 +65,10 @@ class Delegate(btle.DefaultDelegate):
                                 timestamp_string_dict[beetle_addresses[idx]] += char
 
 
-def initHandshake(beetle_peripheral, address):
+def initHandshake(beetle_peripheral, address, clocksync_count):
     global timestamp_dict
     global clocksync_flag_dict
+    global handshake_flag_dict
 
     ultra96_sending_timestamp = time.time() * 1000
 
@@ -85,10 +88,15 @@ def initHandshake(beetle_peripheral, address):
                                 print("handshake succeeded with %s" % (
                                     address))
                                 # function for time calibration
-                                clock_offset_dict.update({address: calculate_clock_offset(
-                                    timestamp_dict[address])})
+                                clock_offset_dict[address].append(calculate_clock_offset(
+                                    timestamp_dict[address]))
                                 print("beetle %s clock offset: %i" %
-                                      (address, clock_offset_dict[address]))
+                                      (address, clock_offset_dict[address][-1]))
+                                # clear timestamp_dict for next clock sync data
+                                timestamp_dict[address] = []
+                                if clocksync_count != 3:
+                                    handshake_flag_dict[address] = True
+                                    clocksync_flag_dict[address] = False
                                 break
                             else:
                                 continue
@@ -111,7 +119,8 @@ def establish_connection(address):
                     beetle_peri_delegate = Delegate(address)
                     global_delegate_obj[idx] = beetle_peri_delegate
                     beetle_peripheral.withDelegate(beetle_peri_delegate)
-                    initHandshake(beetle_peripheral, address)
+                    for count in range(1, 4):
+                        initHandshake(beetle_peripheral, address, count)
                     print("Connected to %s" % (address))
                     beetles_connection_flag_dict.update(
                         {address: True})
@@ -230,8 +239,7 @@ def processData(address, buffer_obj, dataset_count_obj, timestamp_obj, checksum_
 if __name__ == '__main__':
     # global variables
     #beetle_addresses = ["1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE", "78:D8:2F:BF:3F:63"]
-    beetle_addresses = ["78:DB:2F:BF:3F:23",
-                        "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
+    beetle_addresses = ["78:DB:2F:BF:3F:23"]
     global_delegate_obj = []
     global_beetle_periphs = []
     beetles_connection_flag_dict = {}  # {beetle_address1:handshakeflag1,.....}
@@ -264,8 +272,8 @@ if __name__ == '__main__':
                            "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
     timestamp_dict = {"78:DB:2F:BF:3F:23": [],
                       "78:DB:2F:BF:3B:54": [], "78:DB:2F:BF:2C:E2": []}
-    clock_offset_dict = {"78:DB:2F:BF:3F:23": 0,
-                         "78:DB:2F:BF:3B:54": 0, "78:DB:2F:BF:2C:E2": 0}
+    clock_offset_dict = {"78:DB:2F:BF:3F:23": [],
+                         "78:DB:2F:BF:3B:54": [], "78:DB:2F:BF:2C:E2": []}
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle_periphs.append(0) for idx in range(len(beetle_addresses))]
@@ -299,6 +307,7 @@ if __name__ == '__main__':
         connection_futures = {connection_executor4.submit(
             establish_connection, "78:DB:2F:BF:3F:23")}
     connection_executor4.shutdown(wait=True)
+    """
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as connection_executor5:
         connection_futures = {connection_executor5.submit(
             establish_connection, "78:DB:2F:BF:3B:54")}
@@ -307,6 +316,7 @@ if __name__ == '__main__':
         connection_futures = {connection_executor6.submit(
             establish_connection, "78:DB:2F:BF:2C:E2")}
     connection_executor6.shutdown(wait=True)
+    """
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as data_executor:
             receive_data_futures = {data_executor.submit(
@@ -340,11 +350,11 @@ if __name__ == '__main__':
         # synchronization delay
 
         beetle1_time_ultra96 = calculate_ultra96_time(
-            beetle1_data_dict, clock_offset_dict["78:DB:2F:BF:3F:23"])
+            beetle1_data_dict, sum(clock_offset_dict["78:DB:2F:BF:3F:23"])/len(clock_offset_dict["78:DB:2F:BF:3F:23"]))
         beetle2_time_ultra96 = calculate_ultra96_time(
-            beetle2_data_dict, clock_offset_dict["78:DB:2F:BF:3B:54"])
+            beetle2_data_dict, sum(clock_offset_dict["78:DB:2F:BF:3B:54"])/len(clock_offset_dict["78:DB:2F:BF:3B:54"]))
         beetle3_time_ultra96 = calculate_ultra96_time(
-            beetle3_data_dict, clock_offset_dict["78:DB:2F:BF:2C:E2"])
+            beetle3_data_dict, sum(clock_offset_dict["78:DB:2F:BF:2C:E2"])/len(clock_offset_dict["78:DB:2F:BF:2C:E2"]))
         # max(beetle3_time_ultra96, ...) - min(beetle1_time_ultra96, ...)
         sync_delay = max(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96) - \
             min(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96)

@@ -5,7 +5,9 @@ bool is_new_move = false;
 void setup()
 {
   Serial.begin(115200);
-  receiveHandshakeAndClockSync();
+  for (int a = 0; a < 3; a++) {
+    receiveHandshakeAndClockSync();
+  }
 }
 
 void loop() {
