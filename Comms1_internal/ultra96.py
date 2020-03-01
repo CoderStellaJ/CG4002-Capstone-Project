@@ -239,7 +239,7 @@ def processData(address, buffer_obj, dataset_count_obj, timestamp_obj, checksum_
 if __name__ == '__main__':
     # global variables
     #beetle_addresses = ["1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE", "78:D8:2F:BF:3F:63"]
-    beetle_addresses = ["78:DB:2F:BF:3F:23"]
+    beetle_addresses = ["78:DB:2F:BF:3F:23", "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
     global_delegate_obj = []
     global_beetle_periphs = []
     beetles_connection_flag_dict = {}  # {beetle_address1:handshakeflag1,.....}
@@ -303,20 +303,18 @@ if __name__ == '__main__':
             establish_connection, "78:D8:2F:BF:3F:63")}
     connection_executor3.shutdown(wait=True)
     """
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as connection_executor4:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as connection_executor4:
         connection_futures = {connection_executor4.submit(
             establish_connection, "78:DB:2F:BF:3F:23")}
     connection_executor4.shutdown(wait=True)
-    """
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as connection_executor5:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as connection_executor5:
         connection_futures = {connection_executor5.submit(
             establish_connection, "78:DB:2F:BF:3B:54")}
     connection_executor5.shutdown(wait=True)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as connection_executor6:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as connection_executor6:
         connection_futures = {connection_executor6.submit(
             establish_connection, "78:DB:2F:BF:2C:E2")}
     connection_executor6.shutdown(wait=True)
-    """
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as data_executor:
             receive_data_futures = {data_executor.submit(
@@ -363,7 +361,7 @@ if __name__ == '__main__':
         print("Beetle 2 ultra 96 time: ", beetle2_time_ultra96)
         print("Beetle 3 ultra 96 time: ", beetle3_time_ultra96)
         print("Synchronization delay is: ", sync_delay)
-        break
+
         """
         ml_future = futures.ProcessPoolExecutor(max_workers=None)
         ml_process = ml_future.submit(executeMachineLearning)
