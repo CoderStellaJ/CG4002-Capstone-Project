@@ -31,6 +31,7 @@ class Delegate(btle.DefaultDelegate):
             if global_delegate_obj[idx] == self:
                 print("receiving data from %s" % (beetle_addresses[idx]))
                 print("data: " + data.decode('UTF-8'))
+                buffer_dict[beetle_addresses[idx]] += data.decode('UTF-8')
                 if handshake_flag_dict[beetle_addresses[idx]] is False:
                     # start of dataset
                     if 'D' in data.decode('UTF-8') and ((packet_count_dict[beetle_addresses[idx]] % 1) != 0.5):
@@ -38,9 +39,8 @@ class Delegate(btle.DefaultDelegate):
                     # end of dataset
                     if '>' in data.decode('UTF-8') and ((packet_count_dict[beetle_addresses[idx]] % 1) == 0.5):
                         packet_count_dict[beetle_addresses[idx]] += 0.5
-                buffer_dict[beetle_addresses[idx]] += data.decode('UTF-8')
-                for char in buffer_dict[beetle_addresses[idx]]:
-                    if char == 'A' or handshake_flag_dict[beetle_addresses[idx]] is True:
+                else:
+                    for char in buffer_dict[beetle_addresses[idx]]:
                         if char == 'A':
                             ultra96_receiving_timestamp = time.time() * 1000
                             continue
@@ -66,7 +66,7 @@ class Delegate(btle.DefaultDelegate):
                                 timestamp_string_dict[beetle_addresses[idx]] += char
 
 
-def initHandshake(beetle_peripheral, address, clocksync_count):
+def initHandshake(beetle_peripheral, address):
     global timestamp_dict
     global clocksync_flag_dict
     global handshake_flag_dict
@@ -93,11 +93,6 @@ def initHandshake(beetle_peripheral, address, clocksync_count):
                                     timestamp_dict[address]))
                                 print("beetle %s clock offset: %i" %
                                       (address, clock_offset_dict[address][-1]))
-                                # clear timestamp_dict for next clock sync data
-                                timestamp_dict[address] = []
-                                if clocksync_count != 3:
-                                    handshake_flag_dict[address] = True
-                                    clocksync_flag_dict[address] = False
                                 break
                             else:
                                 continue
@@ -120,8 +115,7 @@ def establish_connection(address):
                     beetle_peri_delegate = Delegate(address)
                     global_delegate_obj[idx] = beetle_peri_delegate
                     beetle_peripheral.withDelegate(beetle_peri_delegate)
-                    for count in range(1, 4):
-                        initHandshake(beetle_peripheral, address, count)
+                    initHandshake(beetle_peripheral, address)
                     print("Connected to %s" % (address))
                     beetles_connection_flag_dict.update(
                         {address: True})
@@ -155,7 +149,7 @@ def getBeetleData(beetle_peri):
             if beetle_peri.waitForNotifications(20):
                 print("getting data...")
                 # if number of datasets received from all beetles exceed expectation
-                if packet_count_dict[beetle_peri.addr] == 100.0:
+                if packet_count_dict[beetle_peri.addr] == num_datasets:
                     print("sufficient datasets received from %s. Processing data now" % (
                         beetle_peri.addr))
                     # reset for next dance move
@@ -249,6 +243,7 @@ if __name__ == '__main__':
     buffer_dict = {"78:DB:2F:BF:3F:23": "",
                    "78:DB:2F:BF:3B:54": "", "78:DB:2F:BF:2C:E2": ""}
     # data global variables
+    num_datasets = 100.0
     beetle1_data_dict = {"78:DB:2F:BF:3F:23": {}}
     beetle2_data_dict = {"78:DB:2F:BF:3B:54": {}}
     beetle3_data_dict = {"78:DB:2F:BF:2C:E2": {}}

@@ -1,13 +1,10 @@
 char transmit_buffer[19];
 char timestamp[10];
-unsigned int time_sync;
 bool is_new_move = false;
 void setup()
 {
   Serial.begin(115200);
-  for (int a = 0; a < 3; a++) {
-    receiveHandshakeAndClockSync();
-  }
+  receiveHandshakeAndClockSync();
 }
 
 void loop() {
@@ -15,7 +12,7 @@ void loop() {
     ultoa(millis(), timestamp, 10);
   }
   processSendData();
-  delay(50);
+  delay(500);
 }
 
 void receiveHandshakeAndClockSync()
