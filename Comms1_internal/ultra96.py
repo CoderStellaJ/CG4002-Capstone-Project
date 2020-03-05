@@ -52,6 +52,7 @@ class Delegate(btle.DefaultDelegate):
                             handshake_flag_dict[beetle_addresses[idx]] = False
                             clocksync_flag_dict[beetle_addresses[idx]] = True
                             # clear serial input buffer to get ready for data packets
+                            timestamp_string_dict[beetle_addresses[idx]] = ""
                             buffer_dict[beetle_addresses[idx]] = ""
                             print("beetle: %s" % (beetle_addresses[idx]))
                             print(timestamp_dict[beetle_addresses[idx]])
