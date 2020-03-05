@@ -12,7 +12,7 @@ def calculate_ultra96_time(beetle_data_dict, clock_offset):
         for key in beetle_data_dict[address]:
             data_list = beetle_data_dict[address][key]
             time_beetle = data_list[0]
-            if(time_beetle != 0):
+            if(time_beetle != 1):
                 time_ultra96 = time_beetle - clock_offset
                 return time_ultra96
 
