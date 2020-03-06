@@ -1,7 +1,6 @@
 from bluepy import btle
 import concurrent
 from concurrent import futures
-import ray
 import time
 from time_sync import *
 
@@ -165,9 +164,17 @@ def getBeetleData(beetle_peri):
             reestablish_connection(beetle_peri, beetle_peri.addr)
 
 
-@ray.remote
-def processData(address, buffer_obj, dataset_count_obj, timestamp_obj, checksum_obj, float_obj, datastring_obj, comma_obj):
+#@ray.remote
+def processData(address):
     # use buffer_obj as it is, no need for ray.get() then assigning it to buffer_dict
+    global buffer_dict
+    global dataset_count_dict
+    global timestamp_flag_dict
+    global checksum_dict
+    global float_flag_dict
+    global datastring_dict
+    global comma_count_dict
+    """
     buffer_dict = buffer_obj
     dataset_count_dict = dataset_count_obj
     timestamp_flag_dict = timestamp_obj
@@ -175,6 +182,7 @@ def processData(address, buffer_obj, dataset_count_obj, timestamp_obj, checksum_
     float_flag_dict = float_obj
     datastring_dict = datastring_obj
     comma_count_dict = comma_obj
+    """
     data_dict = {address: {}}
     [data_dict[address].update({idx: []})
      for idx in range(1, 101)]
@@ -282,7 +290,7 @@ if __name__ == '__main__':
     [beetle3_data_dict["78:DB:2F:BF:2C:E2"].update({idx: []})
      for idx in range(1, 101)]
 
-    ray.init()
+    #ray.init()
 
     # max_workers = number of beetles
     """
@@ -316,6 +324,13 @@ if __name__ == '__main__':
             receive_data_futures = {data_executor.submit(
                 getBeetleData, beetle): beetle for beetle in global_beetle_periphs}
         data_executor.shutdown(wait=True)
+        beetle1_data_dict = processData("78:DB:2F:BF:3F:23")
+        buffer_dict["78:DB:2F:BF:3F:23"] = ""
+        beetle2_data_dict = processData("78:DB:2F:BF:3B:54")
+        buffer_dict["78:DB:2F:BF:3B:54"] = ""
+        beetle3_data_dict = processData("78:DB:2F:BF:2C:E2")
+        buffer_dict["78:DB:2F:BF:2C:E2"] = ""
+        """
         buffer_obj = ray.put(buffer_dict)
         dataset_count_obj = ray.put(dataset_count_dict)
         timestamp_obj = ray.put(timestamp_flag_dict)
@@ -338,6 +353,7 @@ if __name__ == '__main__':
                 beetle3_data_dict = ray.get(data_dict_obj)
                 # reset buffer for next dance move
                 buffer_dict["78:DB:2F:BF:2C:E2"] = ""
+        """
         print(beetle1_data_dict)
         print(beetle2_data_dict)
         print(beetle3_data_dict)
