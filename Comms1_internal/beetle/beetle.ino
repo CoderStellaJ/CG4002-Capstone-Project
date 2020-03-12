@@ -67,8 +67,6 @@ int getYPR() {
   if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
     // reset so we can continue cleanly
     mpu.resetFIFO();
-    Serial.println(F("FIFO overflow!"));
-
     // Indicate that there is a failure in getting data
     return 0;
     // otherwise, check for DMP data ready interrupt
@@ -103,16 +101,10 @@ void setup() {
   Fastwire::setup(400, true);
 #endif
   Serial.begin(115200);
-
+  //receiveHandshakeAndClockSync();
   // initialize MPU6050 IMU device
   mpu.initialize();
-
-  // verify connection
-  Serial.println(F("Testing device connections..."));
-  Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
-
   // load and configure the DMP
-  Serial.println(F("Initializing DMP..."));
   devStatus = mpu.dmpInitialize();
 
   // supply your own gyro offsets here, scaled for min sensitivity
@@ -123,16 +115,13 @@ void setup() {
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
     // turn on the DMP, now that it's ready
-    Serial.println(F("Enabling DMP..."));
     mpu.setDMPEnabled(true);
 
     // enable Arduino interrupt detection
-    Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
     attachInterrupt(0, dmpDataReady, RISING);
     mpuIntStatus = mpu.getIntStatus();
 
     // set our DMP Ready flag so the main loop() function knows it's okay to use it
-    Serial.println(F("DMP ready! Waiting for first interrupt..."));
     dmpReady = true;
 
     // get expected DMP packet size for later comparison
@@ -142,16 +131,9 @@ void setup() {
     // 1 = initial memory load failed
     // 2 = DMP configuration updates failed
     // (if it's going to break, usually the code will be 1)
-    Serial.print(F("DMP Initialization failed (code "));
-    Serial.print(devStatus);
-    Serial.println(F(")"));
   }
-
   // Delay for approximately 10 seconds so that the MPU6050 can stabilise itself
   delay(10000);
-  Serial.println("Stabilising completed");
-
-  receiveHandshakeAndClockSync();
 }
 
 void receiveHandshakeAndClockSync()
@@ -174,6 +156,7 @@ void receiveHandshakeAndClockSync()
 }
 
 void loop() {
+  Serial.print('H');
   // Get two YPRs at the start to avoid FIFO overflow issues
   // Get an initial YPR value
   while (1) {
@@ -197,14 +180,6 @@ void loop() {
       break;
     }
   }
-
-  Serial.println(ypr_firstCheck[0]);
-  Serial.println(ypr_firstCheck[1]);
-  Serial.println(ypr_firstCheck[2]);
-  Serial.println(ypr_lastCheck[0]);
-  Serial.println(ypr_lastCheck[1]);
-  Serial.println(ypr_lastCheck[2]);
-
   // Compute the differences between these 2 YPR values to detect if there is a sudden movement
   yawDiff = ypr_lastCheck[0] - ypr_firstCheck[0];
   pitchDiff = ypr_lastCheck[1] - ypr_firstCheck[1];
@@ -225,12 +200,6 @@ void loop() {
         i--;
         continue;
       }
-      Serial.print("ypr\t");
-      Serial.print(ypr[0] * 180 / M_PI);
-      Serial.print("\t");
-      Serial.print(ypr[1] * 180 / M_PI);
-      Serial.print("\t");
-      Serial.println(ypr[2] * 180 / M_PI);
       int chksum = 0;
       char yaw[5];
       char pitch[5];
@@ -274,7 +243,5 @@ void loop() {
       delay(50);
     }
   }
-
-  Serial.println("50 Samples Collected");
   delay(50000000000);
 }
