@@ -38,7 +38,8 @@ volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin h
 
 // Communication variables
 char transmit_buffer[19];
-char timestamp[10];
+char timestamp_arr[10];
+unsigned long timestamp = 0;
 bool is_new_move = false;
 
 void dmpDataReady() {
@@ -93,6 +94,7 @@ int getYPR() {
 }
 
 void setup() {
+  timestamp = millis();
   // join I2C bus (I2Cdev library doesn't do this automatically)
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
   Wire.begin();
@@ -215,6 +217,8 @@ void loop() {
 
   // Only start taking data if there is a spike is found in either one of the three differences
   if (abs(yawDiff) >= 20 || abs(pitchDiff) >= 10 || abs(rollDiff) >= 10) {
+    // Get the initial timestamp of this new dance move
+    timestamp = millis();
     // Loop to get 50 samples from MPU6050 at the frequency of 20Hz
     for (int i = 0; i < 50; i++) {
       if (getYPR() == 0) {
@@ -242,8 +246,9 @@ void loop() {
         strcat(transmit_buffer, "1");
         Serial.print('1');
         }*/
-      strcat(transmit_buffer, "1");
-      Serial.print('1');
+      ultoa(timestamp, 5, timestamp_arr);
+      strcat(transmit_buffer, timestamp_arr);
+      Serial.print(timestamp_arr);
       strcat(transmit_buffer, ",");
       Serial.print(',');
       dtostrf(ypr[0] * 180 / M_PI, 5, 2, yaw);
