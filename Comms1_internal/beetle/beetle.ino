@@ -101,7 +101,7 @@ void setup() {
   Fastwire::setup(400, true);
 #endif
   Serial.begin(115200);
-  //receiveHandshakeAndClockSync();
+  receiveHandshakeAndClockSync();
   // initialize MPU6050 IMU device
   mpu.initialize();
   // load and configure the DMP
@@ -156,7 +156,6 @@ void receiveHandshakeAndClockSync()
 }
 
 void loop() {
-  Serial.print('H');
   // Get two YPRs at the start to avoid FIFO overflow issues
   // Get an initial YPR value
   while (1) {
@@ -184,12 +183,43 @@ void loop() {
   yawDiff = ypr_lastCheck[0] - ypr_firstCheck[0];
   pitchDiff = ypr_lastCheck[1] - ypr_firstCheck[1];
   rollDiff = ypr_lastCheck[2] - ypr_firstCheck[2];
-
+  /*
+  int chksum = 0;
+  char yaw[5];
+  char pitch[5];
+  char roll[5];
+  strcat(transmit_buffer, "D");
+  Serial.print('D');
+  ultoa(timestamp, timestamp_arr, 10);
+  strcat(transmit_buffer, timestamp_arr);
+  Serial.print(timestamp_arr);
+  strcat(transmit_buffer, ",");
+  Serial.print(',');
+  dtostrf(12.23, 5, 2, yaw);
+  strcat(transmit_buffer, yaw);
+  strcat(transmit_buffer, ",");
+  Serial.print(yaw);
+  Serial.print(',');
+  dtostrf(15.52, 5, 2, pitch);
+  strcat(transmit_buffer, pitch);
+  strcat(transmit_buffer, ",");
+  Serial.print(pitch);
+  Serial.print(',');
+  dtostrf(17.26, 5, 2, roll);
+  strcat(transmit_buffer, roll);
+  Serial.print(roll);
+  for (int a = 0; a < strlen(transmit_buffer); a++) {
+    chksum ^= transmit_buffer[a];
+  }
+  Serial.print('|');
+  Serial.print(chksum);
+  Serial.print('>');
+  memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
+  */
   // Have to decide on a good thresholding value to determine the flag
   // Serial.println(abs(yawDiff));
   // Serial.println(abs(pitchDiff));
   // Serial.println(abs(rollDiff));
-
   // Only start taking data if there is a spike is found in either one of the three differences
   if (abs(yawDiff) >= 20 || abs(pitchDiff) >= 10 || abs(rollDiff) >= 10) {
     // Get the initial timestamp of this new dance move
@@ -198,50 +228,42 @@ void loop() {
     for (int i = 0; i < 50; i++) {
       if (getYPR() == 0) {
         i--;
+        Serial.println(timestamp);
         continue;
       }
-      int chksum = 0;
-      char yaw[5];
-      char pitch[5];
-      char roll[5];
-      strcat(transmit_buffer, "D");
-      Serial.print('D');
-      /*
-        if (!is_new_move) {
-        strcat(transmit_buffer, timestamp);
-        Serial.print(timestamp);
-        is_new_move = true;
-        } else {
-        strcat(transmit_buffer, "1");
-        Serial.print('1');
-        }*/
-      ultoa(timestamp, timestamp_arr, 10);
-      strcat(transmit_buffer, timestamp_arr);
-      Serial.print(timestamp_arr);
-      strcat(transmit_buffer, ",");
-      Serial.print(',');
-      dtostrf(ypr[0] * 180 / M_PI, 5, 2, yaw);
-      strcat(transmit_buffer, yaw);
-      strcat(transmit_buffer, ",");
-      Serial.print(yaw);
-      Serial.print(',');
-      dtostrf(ypr[1] * 180 / M_PI, 5, 2, pitch);
-      strcat(transmit_buffer, pitch);
-      strcat(transmit_buffer, ",");
-      Serial.print(pitch);
-      Serial.print(',');
-      dtostrf(ypr[2] * 180 / M_PI, 5, 2, roll);
-      strcat(transmit_buffer, roll);
-      Serial.print(roll);
-      for (int a = 0; a < strlen(transmit_buffer); a++) {
+        int chksum = 0;
+        char yaw[5];
+        char pitch[5];
+        char roll[5];
+        strcat(transmit_buffer, "D");
+        Serial.print('D');
+        ultoa(timestamp, timestamp_arr, 10);
+        strcat(transmit_buffer, timestamp_arr);
+        Serial.print(timestamp_arr);
+        strcat(transmit_buffer, ",");
+        Serial.print(',');
+        dtostrf(ypr[0] * 180 / M_PI, 5, 2, yaw);
+        strcat(transmit_buffer, yaw);
+        strcat(transmit_buffer, ",");
+        Serial.print(yaw);
+        Serial.print(',');
+        dtostrf(ypr[1] * 180 / M_PI, 5, 2, pitch);
+        strcat(transmit_buffer, pitch);
+        strcat(transmit_buffer, ",");
+        Serial.print(pitch);
+        Serial.print(',');
+        dtostrf(ypr[2] * 180 / M_PI, 5, 2, roll);
+        strcat(transmit_buffer, roll);
+        Serial.print(roll);
+        for (int a = 0; a < strlen(transmit_buffer); a++) {
         chksum ^= transmit_buffer[a];
-      }
-      Serial.print('|');
-      Serial.print(chksum);
-      Serial.print('>');
-      memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
+        }
+        Serial.print('|');
+        Serial.print(chksum);
+        Serial.print('>');
+        memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
       delay(50);
     }
   }
-  delay(50000000000);
+  delay(50000);
 }
