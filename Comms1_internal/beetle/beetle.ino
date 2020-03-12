@@ -215,7 +215,7 @@ void loop() {
         strcat(transmit_buffer, "1");
         Serial.print('1');
         }*/
-      ultoa(timestamp, timestamp_arr, 5);
+      ultoa(timestamp, timestamp_arr, 10);
       strcat(transmit_buffer, timestamp_arr);
       Serial.print(timestamp_arr);
       strcat(transmit_buffer, ",");
