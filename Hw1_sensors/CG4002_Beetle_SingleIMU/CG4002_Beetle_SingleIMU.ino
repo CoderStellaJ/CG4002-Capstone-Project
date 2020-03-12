@@ -33,6 +33,8 @@ volatile float yawDiff = 0.0;
 volatile float pitchDiff = 0.0;
 volatile float rollDiff = 0.0;
 
+unsigned long timestamp = 0;
+
 // Interrupt detection routine
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 void dmpDataReady() {
@@ -87,6 +89,7 @@ int getYPR() {
 }
 
 void setup() {
+  timestamp = millis();
   // join I2C bus (I2Cdev library doesn't do this automatically)
   #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
       Wire.begin();
@@ -170,25 +173,23 @@ void loop() {
     }
   }
 
-  Serial.println(ypr_firstCheck[0]);
-  Serial.println(ypr_firstCheck[1]);
-  Serial.println(ypr_firstCheck[2]);
-  Serial.println(ypr_lastCheck[0]);
-  Serial.println(ypr_lastCheck[1]);
-  Serial.println(ypr_lastCheck[2]);
+//  Serial.println(ypr_firstCheck[0]);
+//  Serial.println(ypr_firstCheck[1]);
+//  Serial.println(ypr_firstCheck[2]);
+//  Serial.println(ypr_lastCheck[0]);
+//  Serial.println(ypr_lastCheck[1]);
+//  Serial.println(ypr_lastCheck[2]);
   
   // Compute the differences between these 2 YPR values to detect if there is a sudden movement 
   yawDiff = ypr_lastCheck[0] - ypr_firstCheck[0];
   pitchDiff = ypr_lastCheck[1] - ypr_firstCheck[1];
   rollDiff = ypr_lastCheck[2] - ypr_firstCheck[2];
-  
-  // Have to decide on a good thresholding value to determine the flag
-  // Serial.println(abs(yawDiff));
-  // Serial.println(abs(pitchDiff));
-  // Serial.println(abs(rollDiff));
 
   // Only start taking data if there is a spike is found in either one of the three differences 
-  if (abs(yawDiff) >= 20 || abs(pitchDiff) >= 10 || abs(rollDiff) >= 10) {
+  // The spike signifies a new dance move by the dancer 
+  if (abs(yawDiff) >= 10 || abs(pitchDiff) >= 10 || abs(rollDiff) >= 10) {
+    // Get the initial timestamp of this new dance move
+    timestamp = millis();
     // Loop to get 50 samples from MPU6050 at the frequency of 20Hz
     for (int i = 0; i < 50; i++) {
       if (getYPR() == 0) {
@@ -206,5 +207,5 @@ void loop() {
   }
 
   Serial.println("50 Samples Collected");
-  delay(50000000000);
+  delay(500);
 }
