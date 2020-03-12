@@ -40,7 +40,7 @@ void dmpDataReady() {
 }
 
 // Function to get yaw pitch roll values
-void getYPR() {
+int getYPR() {
   // if programming failed, don't try to do anything
   if (!dmpReady) return;
 
@@ -61,7 +61,9 @@ void getYPR() {
     // reset so we can continue cleanly
     mpu.resetFIFO();
     Serial.println(F("FIFO overflow!"));
-
+    
+    // Indicate that there is a failure in getting data
+    return 0;
   // otherwise, check for DMP data ready interrupt
   } else if (mpuIntStatus & 0x02) {
     // wait for correct available data length
@@ -78,6 +80,9 @@ void getYPR() {
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+
+    // Indicate that the data retrieval is successful
+    return 1;
   }
 }
 
@@ -93,7 +98,6 @@ void setup() {
   Serial.begin(115200);
 
   // initialize MPU6050 IMU device
-  Serial.println(F("Initializing I2C devices..."));
   mpu.initialize();
 
   // verify connection
@@ -109,8 +113,7 @@ void setup() {
   mpu.setYGyroOffset(76);
   mpu.setZGyroOffset(-85);
   mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
-
-  // make sure it worked (returns 0 if so)
+// make sure it worked (returns 0 if so)
   if (devStatus == 0) {
     // turn on the DMP, now that it's ready
     Serial.println(F("Enabling DMP..."));
@@ -139,28 +142,41 @@ void setup() {
 
   // Delay for approximately 10 seconds so that the MPU6050 can stabilise itself
   delay(10000);
+  Serial.println("Stabilising completed");
 }
 
 void loop() {
   // Get two YPRs at the start to avoid FIFO overflow issues
-  getYPR();
-  getYPR();
-  
   // Get an initial YPR value
-  getYPR();
-  ypr_firstCheck[0] = ypr[0] * 180/M_PI;
-  ypr_firstCheck[1] = ypr[1] * 180/M_PI;
-  ypr_firstCheck[2] = ypr[2] * 180/M_PI;
+  while (1) {
+    if (getYPR() == 1) {
+      ypr_firstCheck[0] = ypr[0] * 180/M_PI;
+      ypr_firstCheck[1] = ypr[1] * 180/M_PI;
+      ypr_firstCheck[2] = ypr[2] * 180/M_PI;
+      break;
+    }
+  }
 
   // Set a small delay to get next YPR value
   delay(5);
   
   // Get a secondary YPR value
-  getYPR();
-  ypr_lastCheck[0] = ypr[0] * 180/M_PI;
-  ypr_lastCheck[1] = ypr[1] * 180/M_PI;
-  ypr_lastCheck[2] = ypr[2] * 180/M_PI;
+  while (1) {
+    if (getYPR() == 1) {
+      ypr_lastCheck[0] = ypr[0] * 180/M_PI;
+      ypr_lastCheck[1] = ypr[1] * 180/M_PI;
+      ypr_lastCheck[2] = ypr[2] * 180/M_PI;
+      break;
+    }
+  }
 
+  Serial.println(ypr_firstCheck[0]);
+  Serial.println(ypr_firstCheck[1]);
+  Serial.println(ypr_firstCheck[2]);
+  Serial.println(ypr_lastCheck[0]);
+  Serial.println(ypr_lastCheck[1]);
+  Serial.println(ypr_lastCheck[2]);
+  
   // Compute the differences between these 2 YPR values to detect if there is a sudden movement 
   yawDiff = ypr_lastCheck[0] - ypr_firstCheck[0];
   pitchDiff = ypr_lastCheck[1] - ypr_firstCheck[1];
@@ -175,7 +191,10 @@ void loop() {
   if (abs(yawDiff) >= 20 || abs(pitchDiff) >= 10 || abs(rollDiff) >= 10) {
     // Loop to get 50 samples from MPU6050 at the frequency of 20Hz
     for (int i = 0; i < 50; i++) {
-      getYPR();
+      if (getYPR() == 0) {
+        i--;
+        continue;
+      }
       Serial.print("ypr\t");
       Serial.print(ypr[0] * 180/M_PI);
       Serial.print("\t");
@@ -186,6 +205,6 @@ void loop() {
     }
   }
 
-  Serial.println("Completed");
-  delay(99999999);
+  Serial.println("50 Samples Collected");
+  delay(50000000000);
 }
