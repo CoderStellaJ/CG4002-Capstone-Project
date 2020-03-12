@@ -178,7 +178,10 @@ def processData(address):
         if char != 'D' and char != '.' and char != ',' and char != '|' and char != '>' and (float_flag_dict[address] is True or timestamp_flag_dict[address] is True):
             datastring_dict[address] += char
             checksum_dict[address] ^= ord(char)
-        elif char == '.':  # integer still belongs to original floating point value
+        elif char == '-':  # start of negative floating point value
+            datastring_dict[address] += char
+            checksum_dict[address] ^= ord(char)
+        elif char == '.':  # still at original floating point value
             datastring_dict[address] += char
             checksum_dict[address] ^= ord(char)
         elif char == ',':  # next value
@@ -194,8 +197,8 @@ def processData(address):
                     float(datastring_dict[address]))
             datastring_dict[address] = ""
         elif char == '>':  # end of current dataset
-            print("ultra96 checksum: %i" % (checksum_dict[address]))
-            print("beetle checksum: %i" % (int(datastring_dict[address])))
+            #print("ultra96 checksum: %i" % (checksum_dict[address]))
+            #print("beetle checksum: %i" % (int(datastring_dict[address])))
             # received dataset is invalid; drop the dataset from data dictionary
             if checksum_dict[address] != int(datastring_dict[address]):
                 del data_dict[address][dataset_count_dict[address]]
@@ -225,7 +228,8 @@ def processData(address):
 if __name__ == '__main__':
     # global variables
     #beetle_addresses = ["1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE", "78:D8:2F:BF:3F:63"]
-    beetle_addresses = ["78:DB:2F:BF:3F:23", "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
+    beetle_addresses = ["78:DB:2F:BF:3F:23",
+                        "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
     global_delegate_obj = []
     global_beetle_periphs = []
     beetles_connection_flag_dict = {}  # {beetle_address1:handshakeflag1,.....}
