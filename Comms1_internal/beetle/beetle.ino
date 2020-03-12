@@ -133,7 +133,7 @@ void setup() {
     // (if it's going to break, usually the code will be 1)
   }
   // Delay for approximately 10 seconds so that the MPU6050 can stabilise itself
-  delay(10000);
+  delay(1000);
 }
 
 void receiveHandshakeAndClockSync()
@@ -215,7 +215,7 @@ void loop() {
         strcat(transmit_buffer, "1");
         Serial.print('1');
         }*/
-      ultoa(timestamp, 5, timestamp_arr);
+      ultoa(timestamp, timestamp_arr, 5);
       strcat(transmit_buffer, timestamp_arr);
       Serial.print(timestamp_arr);
       strcat(transmit_buffer, ",");
