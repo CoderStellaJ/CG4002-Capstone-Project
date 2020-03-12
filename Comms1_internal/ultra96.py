@@ -1,6 +1,7 @@
 from bluepy import btle
 import concurrent
 from concurrent import futures
+import multiprocessing
 import time
 from time_sync import *
 
@@ -164,25 +165,7 @@ def getBeetleData(beetle_peri):
             reestablish_connection(beetle_peri, beetle_peri.addr)
 
 
-#@ray.remote
 def processData(address):
-    # use buffer_obj as it is, no need for ray.get() then assigning it to buffer_dict
-    global buffer_dict
-    global dataset_count_dict
-    global timestamp_flag_dict
-    global checksum_dict
-    global float_flag_dict
-    global datastring_dict
-    global comma_count_dict
-    """
-    buffer_dict = buffer_obj
-    dataset_count_dict = dataset_count_obj
-    timestamp_flag_dict = timestamp_obj
-    checksum_dict = checksum_obj
-    float_flag_dict = float_obj
-    datastring_dict = datastring_obj
-    comma_count_dict = comma_obj
-    """
     data_dict = {address: {}}
     [data_dict[address].update({idx: []})
      for idx in range(1, 101)]
@@ -242,7 +225,8 @@ def processData(address):
 if __name__ == '__main__':
     # global variables
     #beetle_addresses = ["1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE", "78:D8:2F:BF:3F:63"]
-    beetle_addresses = ["78:DB:2F:BF:3F:23", "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
+    beetle_addresses = ["78:DB:2F:BF:3F:23",
+                        "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
     global_delegate_obj = []
     global_beetle_periphs = []
     beetles_connection_flag_dict = {}  # {beetle_address1:handshakeflag1,.....}
@@ -290,8 +274,6 @@ if __name__ == '__main__':
     [beetle3_data_dict["78:DB:2F:BF:2C:E2"].update({idx: []})
      for idx in range(1, 101)]
 
-    #ray.init()
-
     # max_workers = number of beetles
     """
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as connection_executor1:
@@ -311,10 +293,12 @@ if __name__ == '__main__':
         connection_futures = {connection_executor4.submit(
             establish_connection, "78:DB:2F:BF:3F:23")}
     connection_executor4.shutdown(wait=True)
+    time.sleep(3)
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as connection_executor5:
         connection_futures = {connection_executor5.submit(
             establish_connection, "78:DB:2F:BF:3B:54")}
     connection_executor5.shutdown(wait=True)
+    time.sleep(3)
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as connection_executor6:
         connection_futures = {connection_executor6.submit(
             establish_connection, "78:DB:2F:BF:2C:E2")}
@@ -324,39 +308,24 @@ if __name__ == '__main__':
             receive_data_futures = {data_executor.submit(
                 getBeetleData, beetle): beetle for beetle in global_beetle_periphs}
         data_executor.shutdown(wait=True)
-        beetle1_data_dict = processData("78:DB:2F:BF:3F:23")
-        buffer_dict["78:DB:2F:BF:3F:23"] = ""
-        beetle2_data_dict = processData("78:DB:2F:BF:3B:54")
-        buffer_dict["78:DB:2F:BF:3B:54"] = ""
-        beetle3_data_dict = processData("78:DB:2F:BF:2C:E2")
-        buffer_dict["78:DB:2F:BF:2C:E2"] = ""
-        """
-        buffer_obj = ray.put(buffer_dict)
-        dataset_count_obj = ray.put(dataset_count_dict)
-        timestamp_obj = ray.put(timestamp_flag_dict)
-        checksum_obj = ray.put(checksum_dict)
-        float_obj = ray.put(float_flag_dict)
-        datastring_obj = ray.put(datastring_dict)
-        comma_obj = ray.put(comma_count_dict)
-        for address in beetle_addresses:
-            data_dict_obj = processData.remote(address, buffer_obj, dataset_count_obj, timestamp_obj,
-                                               checksum_obj, float_obj, datastring_obj, comma_obj)
-            if "78:DB:2F:BF:3F:23" in ray.get(data_dict_obj):
-                beetle1_data_dict = ray.get(data_dict_obj)
-                # reset buffer for next dance move
-                buffer_dict["78:DB:2F:BF:3F:23"] = ""
-            elif "78:DB:2F:BF:3B:54" in ray.get(data_dict_obj):
-                beetle2_data_dict = ray.get(data_dict_obj)
-                # reset buffer for next dance move
-                buffer_dict["78:DB:2F:BF:3B:54"] = ""
-            elif "78:DB:2F:BF:2C:E2" in ray.get(data_dict_obj):
-                beetle3_data_dict = ray.get(data_dict_obj)
-                # reset buffer for next dance move
-                buffer_dict["78:DB:2F:BF:2C:E2"] = ""
-        """
+        pool = multiprocessing.Pool()
+        workers = [pool.apply_async(processData, args=(address, ))
+                   for address in beetle_addresses]
+        result = [worker.get() for worker in workers]
+        for idx in range(0, len(result)):
+            for address in result[idx].keys():
+                if address == "78:DB:2F:BF:3F:23":
+                    beetle1_data_dict["78:DB:2F:BF:3F:23"] = result[idx][address]
+                elif address == "78:DB:2F:BF:3B:54":
+                    beetle2_data_dict["78:DB:2F:BF:3B:54"] = result[idx][address]
+                elif address == "78:DB:2F:BF:2C:E2":
+                    beetle3_data_dict["78:DB:2F:BF:2C:E2"] = result[idx][address]
+        for address in buffer_dict.keys():
+            buffer_dict[address] = ""
         print(beetle1_data_dict)
         print(beetle2_data_dict)
         print(beetle3_data_dict)
+
         # synchronization delay
 
         beetle1_time_ultra96 = calculate_ultra96_time(
@@ -373,7 +342,7 @@ if __name__ == '__main__':
         print("Beetle 2 ultra 96 time: ", beetle2_time_ultra96)
         print("Beetle 3 ultra 96 time: ", beetle3_time_ultra96)
         print("Synchronization delay is: ", sync_delay)
-
+        break
         """
         ml_future = futures.ProcessPoolExecutor(max_workers=None)
         ml_process = ml_future.submit(executeMachineLearning)

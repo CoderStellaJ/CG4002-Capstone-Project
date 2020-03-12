@@ -12,7 +12,7 @@ void loop() {
     ultoa(millis(), timestamp, 10);
   }
   processSendData();
-  delay(500);
+  delay(50);
 }
 
 void receiveHandshakeAndClockSync()
