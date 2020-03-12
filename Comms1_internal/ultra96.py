@@ -225,8 +225,7 @@ def processData(address):
 if __name__ == '__main__':
     # global variables
     #beetle_addresses = ["1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE", "78:D8:2F:BF:3F:63"]
-    beetle_addresses = ["78:DB:2F:BF:3F:23",
-                        "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
+    beetle_addresses = ["78:DB:2F:BF:3F:23", "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
     global_delegate_obj = []
     global_beetle_periphs = []
     beetles_connection_flag_dict = {}  # {beetle_address1:handshakeflag1,.....}
