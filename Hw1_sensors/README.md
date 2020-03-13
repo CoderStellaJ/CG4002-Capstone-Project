@@ -13,3 +13,9 @@ The following are the steps prior to using the code to gather data:
       - mpu.setYGyroOffset(76);
       - mpu.setZGyroOffset(-85);
       - mpu.setZAccelOffset(1788);
+
+### EMG Features 
+The following are the features (frequency/time domain features) extracted from the data by EMG:
+ - 
+ 
+These data will allow us to identify the fatigue level of the muscle based on the following papers 
