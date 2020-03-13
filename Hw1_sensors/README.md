@@ -19,4 +19,5 @@ The following are the features (frequency/time domain features) extracted from t
   - Mean? (time domain)
   - Standard Deviation? (time domain) 
   - Max/Min amplitude value? (time domain)
+  
 These data will allow us to identify the fatigue level of the muscle based on the following papers 
