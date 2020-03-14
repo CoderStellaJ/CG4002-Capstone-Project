@@ -65,6 +65,7 @@ class Server(threading.Thread):
 
             if data:
                 obj = self.decrypt_message(data)
+                print(obj)
                 #print(self.decrypt_message(data))
                 #addValue("testTable", obj['position'],obj['action'],str((float(obj['sync']) + self.i)))
                 #self.i += 1.0 # generate a random value
@@ -93,11 +94,10 @@ class Server(threading.Thread):
         decrypted_message = decrypted_message[decrypted_message.find('#'):]
         decrypted_message = bytes(decrypted_message[1:], 'utf8').decode('utf8')
 
-        messages = decrypted_message.split('|')
-        position, action, sync = messages[:MESSAGE_SIZE]
-        return {
-            'position': position, 'action': action, 'sync':sync
-        }
+##        messages = decrypted_message.split('|')
+##        position, action, sync = messages[:MESSAGE_SIZE]
+        
+        return decrypted_message
 
 import threading
 global i
@@ -135,16 +135,16 @@ def main():
 ##        print('python server.py [IP address] [Port] [groupID]')
 ##        sys.exit()
 ##
-##    ip_addr = sys.argv[1]
-##    port_num = int(sys.argv[2])
-##    group_id = sys.argv[3]
+    ip_addr = sys.argv[1]
+    port_num = int(sys.argv[2])
+    group_id = sys.argv[3]
 
     my_server = Server(ip_addr, port_num, group_id)
     my_server.start()
 
 if __name__ == '__main__':
     #showTable("testTable")
-    changeMove()
-    fakeData()
-    #main()
+    #changeMove()
+    #fakeData()
+    main()
     
