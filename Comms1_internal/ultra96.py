@@ -135,7 +135,6 @@ def reestablish_connection(beetle_peri, address):
             print("re-connected to %s" % (address))
             beetles_connection_flag_dict.update(
                 {beetle_peri.addr: True})
-            getBeetleData(beetle_peri)
             break
         except:
             print("error reconnecting to %s" % (address))
@@ -272,7 +271,7 @@ def processData(address):
 if __name__ == '__main__':
     # global variables
     # beetle_addresses = ["1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE", "78:D8:2F:BF:3F:63"]
-    beetle_addresses = ["1C:BA:8C:1D:30:22"]
+    beetle_addresses = ["1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE"]
     global_delegate_obj = []
     global_beetle_periphs = []
     beetles_connection_flag_dict = {}  # {beetle_address1:handshakeflag1,.....}
@@ -342,11 +341,11 @@ if __name__ == '__main__':
         connection_futures = {connection_executor1.submit(
             establish_connection, "1C:BA:8C:1D:30:22")}
     connection_executor1.shutdown(wait=True)
-    """
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as connection_executor2:
         connection_futures = {connection_executor2.submit(
             establish_connection, "50:F1:4A:CB:FE:EE")}
     connection_executor2.shutdown(wait=True)
+    """
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as connection_executor3:
         connection_futures = {connection_executor3.submit(
             establish_connection, "78:D8:2F:BF:3F:63")}
@@ -368,7 +367,7 @@ if __name__ == '__main__':
     connection_executor6.shutdown(wait=True)
     """
     while True:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as data_executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as data_executor:
             receive_data_futures = {data_executor.submit(
                 getBeetleData, beetle): beetle for beetle in global_beetle_periphs}
         data_executor.shutdown(wait=True)
@@ -423,3 +422,8 @@ if __name__ == '__main__':
         """
         # send data to eval server
         # send data to dashboard server
+    for beetle in global_beetle_periphs:
+        try:
+            beetle.disconnect()
+        except Exception:
+            pass
