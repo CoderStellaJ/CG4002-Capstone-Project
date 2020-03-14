@@ -37,7 +37,7 @@ volatile float rollDiff = 0.0;
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 
 // Communication variables
-char transmit_buffer[30];
+char transmit_buffer[40];
 char timestamp_arr[10];
 unsigned long timestamp = 0;
 bool is_new_move = false;
@@ -197,9 +197,9 @@ void loop() {
         continue;
       }
       int chksum = 0;
-      char yaw[7];
-      char pitch[7];
-      char roll[7];
+      char yaw[5];
+      char pitch[5];
+      char roll[5];
       strcat(transmit_buffer, "D");
       Serial.print('D');
       ultoa(timestamp, timestamp_arr, 10);
@@ -207,17 +207,17 @@ void loop() {
       Serial.print(timestamp_arr);
       strcat(transmit_buffer, ",");
       Serial.print(',');
-      dtostrf(ypr[0] * 180 / M_PI, 7, 2, yaw);
+      dtostrf(ypr[0] * 180 / M_PI, 5, 2, yaw);
       strcat(transmit_buffer, yaw);
       strcat(transmit_buffer, ",");
       Serial.print(yaw);
       Serial.print(',');
-      dtostrf(ypr[1] * 180 / M_PI, 7, 2, pitch);
+      dtostrf(ypr[1] * 180 / M_PI, 5, 2, pitch);
       strcat(transmit_buffer, pitch);
       strcat(transmit_buffer, ",");
       Serial.print(pitch);
       Serial.print(',');
-      dtostrf(ypr[2] * 180 / M_PI, 7, 2, roll);
+      dtostrf(ypr[2] * 180 / M_PI, 5, 2, roll);
       strcat(transmit_buffer, roll);
       Serial.print(roll);
       for (int a = 0; a < strlen(transmit_buffer); a++) {
