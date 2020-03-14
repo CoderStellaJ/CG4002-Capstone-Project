@@ -9,7 +9,9 @@ import plotly
 import random
 import plotly.graph_objs as go
 from collections import deque
-from dbAPI import getLastRow #This is my API
+
+#get last row of data using the function of dbAPI.py
+from dbAPI import getLastRow
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 
@@ -19,6 +21,11 @@ from dash.exceptions import PreventUpdate
 X = deque(maxlen=10)
 X.append(1)
 
+#The deques here are used to store the y-axis
+# -180<YAW<90
+# -90<PITCH<90
+# -90<ROW<90
+#===============================
 Yaw1 = deque(maxlen=10)
 Yaw1.append(1)
 Pitch1 = deque(maxlen=10)
@@ -39,6 +46,7 @@ Pitch3 = deque(maxlen=10)
 Pitch3.append(1)
 Roll3 = deque(maxlen=10)
 Roll3.append(1)
+#==============================
 
 external_stylesheets = [dbc.themes.BOOTSTRAP]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)

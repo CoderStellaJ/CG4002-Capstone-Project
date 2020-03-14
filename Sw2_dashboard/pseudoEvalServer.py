@@ -94,10 +94,11 @@ class Server(threading.Thread):
         decrypted_message = decrypted_message[decrypted_message.find('#'):]
         decrypted_message = bytes(decrypted_message[1:], 'utf8').decode('utf8')
 
-##        messages = decrypted_message.split('|')
-##        position, action, sync = messages[:MESSAGE_SIZE]
-        
-        return decrypted_message
+        messages = decrypted_message.split('|')
+        position, action, sync = messages[:MESSAGE_SIZE]
+        return {
+            'position': position, 'action': action, 'sync':sync
+        }
 
 import threading
 global i
