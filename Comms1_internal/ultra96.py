@@ -33,7 +33,7 @@ class Delegate(btle.DefaultDelegate):
                 print("data: " + data.decode('UTF-8'))
                 if handshake_flag_dict[beetle_addresses[idx]] is True:
                     buffer_dict[beetle_addresses[idx]] += data.decode('UTF-8')
-                    if char == '>' not in data.decode('UTF-8'):
+                    if '>' not in data.decode('UTF-8'):
                         pass
                     else:
                         for char in buffer_dict[beetle_addresses[idx]]:
