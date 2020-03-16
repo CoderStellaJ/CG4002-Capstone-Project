@@ -335,7 +335,7 @@ if __name__ == '__main__':
     [beetle6_data_dict["78:DB:2F:BF:2C:E2"].update({idx: []})
      for idx in range(1, 51)]
 
-    for beetle in global_beetle_periphs:
+    for beetle in beetle_addresses:
         try:
             beetle.disconnect()
         except Exception:
