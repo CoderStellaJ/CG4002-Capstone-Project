@@ -33,30 +33,33 @@ class Delegate(btle.DefaultDelegate):
                 print("data: " + data.decode('UTF-8'))
                 if handshake_flag_dict[beetle_addresses[idx]] is True:
                     buffer_dict[beetle_addresses[idx]] += data.decode('UTF-8')
-                    for char in buffer_dict[beetle_addresses[idx]]:
-                        if char == 'A':
-                            ultra96_receiving_timestamp = time.time() * 1000
-                            continue
-                        if char == '>':  # end of packet
-                            timestamp_dict[beetle_addresses[idx]].append(
-                                int(timestamp_string_dict[beetle_addresses[idx]]))
-                            timestamp_dict[beetle_addresses[idx]].append(
-                                ultra96_receiving_timestamp)
-                            handshake_flag_dict[beetle_addresses[idx]] = False
-                            clocksync_flag_dict[beetle_addresses[idx]] = True
-                            # clear serial input buffer to get ready for data packets
-                            timestamp_string_dict[beetle_addresses[idx]] = ""
-                            buffer_dict[beetle_addresses[idx]] = ""
-                            print("beetle: %s" % (beetle_addresses[idx]))
-                            print(timestamp_dict[beetle_addresses[idx]])
-                            return
-                        elif char != '>':
-                            if char == '|':  # signify start of next timestamp
+                    if char == '>' not in data.decode('UTF-8'):
+                        pass
+                    else:
+                        for char in buffer_dict[beetle_addresses[idx]]:
+                            if char == 'A':
+                                ultra96_receiving_timestamp = time.time() * 1000
+                                continue
+                            if char == '>':  # end of packet
                                 timestamp_dict[beetle_addresses[idx]].append(
                                     int(timestamp_string_dict[beetle_addresses[idx]]))
+                                timestamp_dict[beetle_addresses[idx]].append(
+                                    ultra96_receiving_timestamp)
+                                handshake_flag_dict[beetle_addresses[idx]] = False
+                                clocksync_flag_dict[beetle_addresses[idx]] = True
+                                # clear serial input buffer to get ready for data packets
                                 timestamp_string_dict[beetle_addresses[idx]] = ""
-                            else:
-                                timestamp_string_dict[beetle_addresses[idx]] += char
+                                buffer_dict[beetle_addresses[idx]] = ""
+                                print("beetle: %s" % (beetle_addresses[idx]))
+                                print(timestamp_dict[beetle_addresses[idx]])
+                                return
+                            elif char != '>':
+                                if char == '|':  # signify start of next timestamp
+                                    timestamp_dict[beetle_addresses[idx]].append(
+                                        int(timestamp_string_dict[beetle_addresses[idx]]))
+                                    timestamp_string_dict[beetle_addresses[idx]] = ""
+                                else:
+                                    timestamp_string_dict[beetle_addresses[idx]] += char
                 else:
                     if '>' in data.decode('UTF-8'):
                         buffer_dict[beetle_addresses[idx]
@@ -335,7 +338,7 @@ if __name__ == '__main__':
     [beetle6_data_dict["78:DB:2F:BF:2C:E2"].update({idx: []})
      for idx in range(1, 51)]
 
-    for beetle in beetle_addresses:
+    for beetle in global_beetle_periphs:
         try:
             beetle.disconnect()
         except Exception:
