@@ -335,7 +335,11 @@ if __name__ == '__main__':
     [beetle6_data_dict["78:DB:2F:BF:2C:E2"].update({idx: []})
      for idx in range(1, 51)]
 
-    # max_workers = number of beetles
+    for beetle in global_beetle_periphs:
+        try:
+            beetle.disconnect()
+        except Exception:
+            pass
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as connection_executor1:
         connection_futures = {connection_executor1.submit(
@@ -422,8 +426,3 @@ if __name__ == '__main__':
         """
         # send data to eval server
         # send data to dashboard server
-    for beetle in global_beetle_periphs:
-        try:
-            beetle.disconnect()
-        except Exception:
-            pass
