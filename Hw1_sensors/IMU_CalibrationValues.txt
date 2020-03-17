@@ -1,0 +1,18 @@
+===============Gloves===============    
+1. MAC Address: 
+
+2. MAC Address: 
+
+3. MAC Address: 
+
+===============Socks===============    
+1. MAC Address: 50:F1:4A:CB:FE:EE
+
+mpu.setXGyroOffset(275);
+mpu.setYGyroOffset(-75);
+mpu.setZGyroOffset(53);
+mpu.setZAccelOffset(727);
+
+2. MAC Address: 
+
+3. MAC Address: 
