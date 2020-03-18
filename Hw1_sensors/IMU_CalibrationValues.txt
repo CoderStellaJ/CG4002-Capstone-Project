@@ -18,6 +18,11 @@ mpu.setYGyroOffset(-75);
 mpu.setZGyroOffset(53);
 mpu.setZAccelOffset(727);
 
-2. MAC Address: 
+2. MAC Address: 1C:BA:8C:1D:30:22
+
+mpu.setXGyroOffset(101);
+mpu.setYGyroOffset(-16);
+mpu.setZGyroOffset(-74);
+mpu.setZAccelOffset(4761);
 
 3. MAC Address: 
