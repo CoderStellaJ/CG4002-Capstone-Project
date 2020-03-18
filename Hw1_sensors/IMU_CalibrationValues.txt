@@ -4,7 +4,12 @@ On Arduino, head to Tools -> Manage Libraries and search for MPU6050, install th
 Open Examples under File and open the library example named IMU_Zero and upload this sketch to the Bluno Beetle attached to the IMU, run the code accordingly and follow the instructions from https://www.instructables.com/id/MPU6050-Setup-and-Calibration-Guide/ to get the offset values for X, Y, Z Gyro and Z Accel
 
 ===============Gloves===============    
-1. MAC Address: 
+1. MAC Address: 78:DB:2F:BF:3B:54
+
+mpu.setXGyroOffset(48);
+mpu.setYGyroOffset(-1);
+mpu.setZGyroOffset(-28);
+mpu.setZAccelOffset(4077);
 
 2. MAC Address: 
 
