@@ -11,9 +11,19 @@ mpu.setYGyroOffset(-1);
 mpu.setZGyroOffset(-28);
 mpu.setZAccelOffset(4077);
 
-2. MAC Address: 
+2. MAC Address: 78:DB:2F:BF:3F:23
 
-3. MAC Address: 
+mpu.setXGyroOffset(156);
+mpu.setYGyroOffset(-26);
+mpu.setZGyroOffset(65);
+mpu.setZAccelOffset(2011);
+
+3. MAC Address: 78:DB:2F:BF:3F:63
+
+mpu.setXGyroOffset(-102);
+mpu.setYGyroOffset(-84);
+mpu.setZGyroOffset(-659);
+mpu.setZAccelOffset(1257);
 
 ===============Socks===============    
 1. MAC Address: 50:F1:4A:CB:FE:EE
@@ -30,4 +40,9 @@ mpu.setYGyroOffset(-16);
 mpu.setZGyroOffset(-74);
 mpu.setZAccelOffset(4761);
 
-3. MAC Address: 
+3. MAC Address: 78:DB:2F:BF:2C:E2
+
+mpu.setXGyroOffset(434);
+mpu.setYGyroOffset(-24);
+mpu.setZGyroOffset(-26);
+mpu.setZAccelOffset(897);
