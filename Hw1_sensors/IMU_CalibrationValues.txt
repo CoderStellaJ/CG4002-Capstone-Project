@@ -13,10 +13,10 @@ mpu.setZAccelOffset(4077);
 
 2. MAC Address: 78:DB:2F:BF:3F:23
 
-mpu.setXGyroOffset(68);
-mpu.setYGyroOffset(-19);
-mpu.setZGyroOffset(-35);
-mpu.setZAccelOffset(4260);
+mpu.setXGyroOffset(156);
+mpu.setYGyroOffset(-26);
+mpu.setZGyroOffset(65);
+mpu.setZAccelOffset(2011);
 
 3. MAC Address: 78:DB:2F:BF:3F:63
 
