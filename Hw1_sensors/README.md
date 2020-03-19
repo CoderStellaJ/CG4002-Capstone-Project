@@ -7,7 +7,7 @@ The two libraries required to use the IMUs (MPU6050) are uploaded in this folder
  
 ### Usage of the Bluno Beetle and IMU (MPU6050) set ### 
 The following are the steps prior to using the code to gather data:
- - Check which set are you holding onto and get the calibration values from the calibration textfile named IMU_CalibrationValues.txt in this folder (TBC)
+ - Check which set are you holding onto and get the calibration values from the calibration textfile named IMU_CalibrationValues.txt in this folder
  - Head to the IMU code and edit the following lines within void setup() function to the respective values stated in the textfile
       - mpu.setXGyroOffset(220);
       - mpu.setYGyroOffset(76);
