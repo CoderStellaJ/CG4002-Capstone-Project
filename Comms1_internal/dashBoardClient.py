@@ -21,11 +21,15 @@ PADDING = ' '
 class Client():
     def __init__(self, ip_addr, port_num, group_id, secret_key):
         super(Client, self).__init__()
-
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_address = (ip_addr, port_num)
         self.secret_key = secret_key
-        self.socket.connect(server_address)
+        try:
+            self.socket.connect(server_address)
+        except Exception as e:
+            print(e)
+            pass
+        #self.socket.connect(server_address)
         # testing on laptop
         # self.timeout = 60
         print("client is connected!")
@@ -38,7 +42,7 @@ class Client():
     
     def send_data_to_DB(self, table, data):
         #dataList = list(data.values())
-        encrypted_text = self.encrypt_message_DB(table, dataDict)
+        encrypted_text = self.encrypt_message_DB(table, data)
         print("encrypted_text: ", encrypted_text)
         sent_message = encrypted_text
         print("sent_message length: ", len(sent_message))
@@ -74,7 +78,7 @@ def main():
 ##    port_num = int(sys.argv[2])
 ##    group_id = sys.argv[3]
 ##    secret_key = sys.argv[4]
-    dashboard_client = Client("127.0.0.2", 8080, 6, "cg40024002group6")
+    dashboard_client = Client("192.168.43.248", 8080, 6, "cg40024002group6")
     #dashboard_client = Client(ip_addr, port_num, group_id, secret_key)
     pseudoDict  = {1:'YAW', 2: 'PITCH', 3:'RAW'}
     

@@ -4,8 +4,6 @@ from concurrent import futures
 import multiprocessing
 import time
 from time_sync import *
-import eval_client
-import dashBoardClient
 
 
 class UUIDS:
@@ -61,37 +59,41 @@ class Delegate(btle.DefaultDelegate):
                     else:
                         buffer_dict[beetle_addresses[idx]
                                     ] += data.decode('UTF-8')
-                    # send data to dashboard once every 10 datasets
-                    if packet_count_dict[beetle_addresses[idx]] % 10 == 0 and '>' in data.decode('UTF-8'):
-                        print("sending data to dashboard")
-                        """
-                        board_client.send_data_to_DB(
-                            beetle_addresses[idx], buffer_dict[beetle_addresses[idx]])
-                        """
 
 
-def initHandshake(beetle_peripheral, address):
+def initHandshake(beetle_peripheral):
     ultra96_sending_timestamp = time.time() * 1000
-
+    handshake_flag_dict[beetle_peripheral.addr] = True
     for characteristic in beetle_peripheral.getCharacteristics():
         if characteristic.uuid == UUIDS.SERIAL_COMMS:
             ultra96_sending_timestamp = time.time() * 1000
-            timestamp_dict[address].append(ultra96_sending_timestamp)
+            timestamp_dict[beetle_peripheral.addr].append(
+                ultra96_sending_timestamp)
+            characteristic.write(
+                bytes('T', 'utf-8'), withResponse=False)
+            time.sleep(8)
             characteristic.write(
                 bytes('H', 'utf-8'), withResponse=False)
             while True:
-                if beetle_peripheral.waitForNotifications(10):
-                    if clocksync_flag_dict[address] is True:
-                        characteristic.write(
-                            bytes('A', 'utf-8'), withResponse=False)
-                        # function for time calibration
-                        clock_offset_dict[address].append(calculate_clock_offset(
-                            timestamp_dict[address]))
-                        print("beetle %s clock offset: %i" %
-                              (address, clock_offset_dict[address][-1]))
-                        return
-                    else:
-                        continue
+                try:
+                    if beetle_peripheral.waitForNotifications(10):
+                        if clocksync_flag_dict[beetle_peripheral.addr] is True:
+                            characteristic.write(
+                                bytes('A', 'utf-8'), withResponse=False)
+                            # function for time calibration
+                            clock_offset_dict[beetle_peripheral.addr].append(calculate_clock_offset(
+                                timestamp_dict[beetle_peripheral.addr]))
+                            timestamp_dict[beetle_peripheral.addr].clear()
+                            print("beetle %s clock offset: %i" %
+                                  (beetle_peripheral.addr, clock_offset_dict[beetle_peripheral.addr][-1]))
+                            clocksync_flag_dict[beetle_peripheral.addr] = False
+                            return
+                        else:
+                            continue
+                except Exception as e:
+                    print(e)
+                    reestablish_connection(
+                        beetle_peripheral, beetle_peripheral.addr)
 
 
 def establish_connection(address):
@@ -107,11 +109,12 @@ def establish_connection(address):
                     global_delegate_obj[idx] = beetle_peri_delegate
                     beetle_peripheral.withDelegate(beetle_peri_delegate)
                     time.sleep(1)
-                    initHandshake(beetle_peripheral, address)
+                    initHandshake(beetle_peripheral)
                     print("Connected to %s" % (address))
-                    return
-        except Exception as e:
-            print(e)
+                    break
+            break
+        except:
+            print("failed to connect to %s" % (address))
             time.sleep(1)
             continue
 
@@ -119,8 +122,6 @@ def establish_connection(address):
 def reestablish_connection(beetle_peri, address):
     while True:
         try:
-            if beetle_peri.waitForNotifications(20):
-                return
             print("reconnecting to %s" % (address))
             beetle_peri.connect(address)
             print("re-connected to %s" % (address))
@@ -252,57 +253,57 @@ def processData(address):
 
 if __name__ == '__main__':
     # global variables
-    #beetle_addresses = ["1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE", "78:DB:2F:BF:3F:63", "78:DB:2F:BF:3F:23", "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
-    beetle_addresses = ["1C:BA:8C:1D:30:22", "78:DB:2F:BF:3B:54"]
+    beetle_addresses = ["78:DB:2F:BF:3B:54"]
     global_delegate_obj = []
     global_beetle_periphs = []
-    handshake_flag_dict = {"1C:BA:8C:1D:30:22": True, "50:F1:4A:CB:FE:EE": True, "78:DB:2F:BF:3F:63": True,
+    handshake_flag_dict = {"1C:BA:8C:1D:30:22": True, "50:F1:4A:CB:FE:EE": True, "78:D8:2F:BF:3F:63": True,
                            "78:DB:2F:BF:3F:23": True, "78:DB:2F:BF:3B:54": True, "78:DB:2F:BF:2C:E2": True}
-    buffer_dict = {"1C:BA:8C:1D:30:22": "", "50:F1:4A:CB:FE:EE": "", "78:DB:2F:BF:3F:63": "", "78:DB:2F:BF:3F:23": "",
+    buffer_dict = {"1C:BA:8C:1D:30:22": "", "50:F1:4A:CB:FE:EE": "", "78:D8:2F:BF:3F:63": "", "78:DB:2F:BF:3F:23": "",
                    "78:DB:2F:BF:3B:54": "", "78:DB:2F:BF:2C:E2": ""}
-    buffer_dataset_dict = {"1C:BA:8C:1D:30:22": "", "50:F1:4A:CB:FE:EE": "", "78:DB:2F:BF:3F:63": "", "78:DB:2F:BF:3F:23": "",
+    buffer_dataset_dict = {"1C:BA:8C:1D:30:22": "", "50:F1:4A:CB:FE:EE": "", "78:D8:2F:BF:3F:63": "", "78:DB:2F:BF:3F:23": "",
                            "78:DB:2F:BF:3B:54": "", "78:DB:2F:BF:2C:E2": ""}
     # data global variables
     num_datasets = 50
     # {"78:DB:2F:BF:3F:23": {1: [100, 12.23, 14.45, 15.67]}, {2: [100, 14.56, -23.24, -16.78]}}
     beetle1_data_dict = {"1C:BA:8C:1D:30:22": {}}
     beetle2_data_dict = {"50:F1:4A:CB:FE:EE": {}}
-    beetle3_data_dict = {"78:DB:2F:BF:3F:63": {}}
+    beetle3_data_dict = {"78:D8:2F:BF:3F:63": {}}
     beetle4_data_dict = {"78:DB:2F:BF:3F:23": {}}
     beetle5_data_dict = {"78:DB:2F:BF:3B:54": {}}
     beetle6_data_dict = {"78:DB:2F:BF:2C:E2": {}}
-    datastring_dict = {"1C:BA:8C:1D:30:22": "", "50:F1:4A:CB:FE:EE": "", "78:DB:2F:BF:3F:63": "", "78:DB:2F:BF:3F:23": "",
+    datastring_dict = {"1C:BA:8C:1D:30:22": "", "50:F1:4A:CB:FE:EE": "", "78:D8:2F:BF:3F:63": "", "78:DB:2F:BF:3F:23": "",
                        "78:DB:2F:BF:3B:54": "", "78:DB:2F:BF:2C:E2": ""}
-    packet_count_dict = {"1C:BA:8C:1D:30:22": 0, "50:F1:4A:CB:FE:EE": 0, "78:DB:2F:BF:3F:63": 0, "78:DB:2F:BF:3F:23": 0,
+    packet_count_dict = {"1C:BA:8C:1D:30:22": 0, "50:F1:4A:CB:FE:EE": 0, "78:D8:2F:BF:3F:63": 0, "78:DB:2F:BF:3F:23": 0,
                          "78:DB:2F:BF:3B:54": 0, "78:DB:2F:BF:2C:E2": 0}
-    dataset_count_dict = {"1C:BA:8C:1D:30:22": 0, "50:F1:4A:CB:FE:EE": 0, "78:DB:2F:BF:3F:63": 0, "78:DB:2F:BF:3F:23": 0,
+    dataset_count_dict = {"1C:BA:8C:1D:30:22": 0, "50:F1:4A:CB:FE:EE": 0, "78:D8:2F:BF:3F:63": 0, "78:DB:2F:BF:3F:23": 0,
                           "78:DB:2F:BF:3B:54": 0, "78:DB:2F:BF:2C:E2": 0}
-    float_flag_dict = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:DB:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
+    float_flag_dict = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:D8:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
                        "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
-    timestamp_flag_dict = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:DB:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
+    timestamp_flag_dict = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:D8:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
                            "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
-    comma_count_dict = {"1C:BA:8C:1D:30:22": 0, "50:F1:4A:CB:FE:EE": 0, "78:DB:2F:BF:3F:63": 0, "78:DB:2F:BF:3F:23": 0,
+    comma_count_dict = {"1C:BA:8C:1D:30:22": 0, "50:F1:4A:CB:FE:EE": 0, "78:D8:2F:BF:3F:63": 0, "78:DB:2F:BF:3F:23": 0,
                         "78:DB:2F:BF:3B:54": 0, "78:DB:2F:BF:2C:E2": 0}
-    checksum_dict = {"1C:BA:8C:1D:30:22": 0, "50:F1:4A:CB:FE:EE": 0, "78:DB:2F:BF:3F:63": 0, "78:DB:2F:BF:3F:23": 0,
+    checksum_dict = {"1C:BA:8C:1D:30:22": 0, "50:F1:4A:CB:FE:EE": 0, "78:D8:2F:BF:3F:63": 0, "78:DB:2F:BF:3F:23": 0,
                      "78:DB:2F:BF:3B:54": 0, "78:DB:2F:BF:2C:E2": 0}
-    start_flag = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:DB:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
+    start_flag = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:D8:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
                   "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
-    end_flag = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:DB:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
+    end_flag = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:D8:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
                 "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
     # clock synchronization global variables
-    clocksync_flag_dict = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:DB:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
+    dance_count = 0
+    clocksync_flag_dict = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:D8:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
                            "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
-    timestamp_dict = {"1C:BA:8C:1D:30:22": [], "50:F1:4A:CB:FE:EE": [], "78:DB:2F:BF:3F:63": [], "78:DB:2F:BF:3F:23": [],
+    timestamp_dict = {"1C:BA:8C:1D:30:22": [], "50:F1:4A:CB:FE:EE": [], "78:D8:2F:BF:3F:63": [], "78:DB:2F:BF:3F:23": [],
                       "78:DB:2F:BF:3B:54": [], "78:DB:2F:BF:2C:E2": []}
-    clock_offset_dict = {"1C:BA:8C:1D:30:22": [], "50:F1:4A:CB:FE:EE": [], "78:DB:2F:BF:3F:63": [], "78:DB:2F:BF:3F:23": [],
+    clock_offset_dict = {"1C:BA:8C:1D:30:22": [], "50:F1:4A:CB:FE:EE": [], "78:D8:2F:BF:3F:63": [], "78:DB:2F:BF:3F:23": [],
                          "78:DB:2F:BF:3B:54": [], "78:DB:2F:BF:2C:E2": []}
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle_periphs.append(0) for idx in range(len(beetle_addresses))]
-
+    """
     establish_connection("1C:BA:8C:1D:30:22")
     time.sleep(1)
-
+    """
     """
     establish_connection("50:F1:4A:CB:FE:EE")
     time.sleep(1)
@@ -315,17 +316,12 @@ if __name__ == '__main__':
     establish_connection("78:DB:2F:BF:3F:23")
     time.sleep(1)
     """
+
     establish_connection("78:DB:2F:BF:3B:54")
     time.sleep(1)
 
     """
     establish_connection("78:DB:2F:BF:2C:E2")
-    """
-    """
-    eval_client = eval_client.Client(
-        "127.0.0.2", 8080, 6, "cg40024002group6")  # ip address is address of server
-    board_client = dashBoardClient.Client(
-        "192.168.43.248", 8080, 6, "cg40024002group6")
     """
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
@@ -342,7 +338,7 @@ if __name__ == '__main__':
                     beetle1_data_dict[address] = result[idx][address]
                 elif address == "50:F1:4A:CB:FE:EE":
                     beetle2_data_dict[address] = result[idx][address]
-                elif address == "78:DB:2F:BF:3F:63":
+                elif address == "78:D8:2F:BF:3F:63":
                     beetle3_data_dict[address] = result[idx][address]
                 elif address == "78:DB:2F:BF:3F:23":
                     beetle4_data_dict[address] = result[idx][address]
@@ -361,10 +357,10 @@ if __name__ == '__main__':
         print(beetle6_data_dict)
 
         # synchronization delay
-
+        """
         beetle1_time_ultra96 = calculate_ultra96_time(
             beetle1_data_dict, clock_offset_dict["1C:BA:8C:1D:30:22"][0])
-
+        """
         """
         beetle2_time_ultra96 = calculate_ultra96_time(
             beetle2_data_dict, clock_offset_dict["50:F1:4A:CB:FE:EE"][0])
@@ -386,29 +382,38 @@ if __name__ == '__main__':
             beetle6_data_dict, clock_offset_dict["78:DB:2F:BF:2C:E2"][0])
         """
 
-        # max(beetle3_time_ultra96, ...) - min(beetle1_time_ultra96, ...)
-        sync_delay = max(beetle1_time_ultra96, beetle5_time_ultra96) - \
-            min(beetle1_time_ultra96, beetle5_time_ultra96)
-        print("Beetle 1 ultra 96 time: ", beetle1_time_ultra96)
-        #print("Beetle 2 ultra 96 time: ", beetle2_time_ultra96)
-        #print("Beetle 3 ultra 96 time: ", beetle3_time_ultra96)
-        #print("Beetle 4 ultra 96 time: ", beetle4_time_ultra96)
         print("Beetle 5 ultra 96 time: ", beetle5_time_ultra96)
-        #print("Beetle 6 ultra 96 time: ", beetle6_time_ultra96)
-        print("Synchronization delay is: ", sync_delay)
+        dance_count += 1
+        # do calibration once every 2 moves; change 2 to other values according to time calibration needs
+        if dance_count == 2:
+            print("Proceed to do time calibration...")
+            # clear clock_offset_dict for next time calibration
+            for address in clock_offset_dict.keys():
+                clock_offset_dict[address].clear()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=7) as time_executor:
+                time_calibrate_futures = {time_executor.submit(
+                    initHandshake, beetle): beetle for beetle in global_beetle_periphs}
+            time_executor.shutdown(wait=True)
+            dance_count = 0
+        else:
+            for beetle_peri in global_beetle_periphs:
+                for characteristic in beetle_peri.getCharacteristics():
+                    if characteristic.uuid == UUIDS.SERIAL_COMMS:
+                        characteristic.write(
+                            bytes('S', 'utf-8'), withResponse=False)
         """
-        # machine learning
-        workers = pool.apply_async(executeMachineLearning, args=(
-            beetle1_data_dict, beetle2_data_dict, beetle3_data_dict, beetle4_data_dict, beetle5_data_dict, beetle6_data_dict))
-        # ml_result = ("1 2 3", "muscle")
-        ml_result = [worker.get() for worker in workers]
+        ml_future = futures.ProcessPoolExecutor(max_workers=None)
+        ml_process = ml_future.submit(executeMachineLearning)
+        ml_process.result()
+        send_results = futures.ProcessPoolExecutor(max_workers=None)
+        send_results_process = send_results.submit(send_results_to_servers)
         """
-
-        ml_result = ("1 2 3", "muscle")
         # send data to eval server
         # send data to dashboard server
-        """
-        workers = pool.apply(eval_client.send_data, args=(
-            ml_result[0], ml_result[1], sync_delay))
-        """
-        break
+        # clear the data dictionaries for next dance move
+        beetle1_data_dict = {"1C:BA:8C:1D:30:22": {}}
+        beetle2_data_dict = {"50:F1:4A:CB:FE:EE": {}}
+        beetle3_data_dict = {"78:D8:2F:BF:3F:63": {}}
+        beetle4_data_dict = {"78:DB:2F:BF:3F:23": {}}
+        beetle5_data_dict = {"78:DB:2F:BF:3B:54": {}}
+        beetle6_data_dict = {"78:DB:2F:BF:2C:E2": {}}
