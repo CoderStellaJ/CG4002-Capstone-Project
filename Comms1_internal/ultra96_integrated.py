@@ -24,71 +24,79 @@ class Delegate(btle.DefaultDelegate):
             if global_delegate_obj[idx] == self:
                 print("receiving data from %s" % (beetle_addresses[idx]))
                 print("data: " + data.decode('UTF-8'))
-                if handshake_flag_dict[beetle_addresses[idx]] is True:
-                    buffer_dict[beetle_addresses[idx]] += data.decode('UTF-8')
-                    if '>' not in data.decode('UTF-8'):
-                        pass
-                    else:
-                        for char in buffer_dict[beetle_addresses[idx]]:
-                            if char == 'A':
-                                ultra96_receiving_timestamp = time.time() * 1000
-                                continue
-                            if char == '>':  # end of packet
-                                timestamp_dict[beetle_addresses[idx]].append(
-                                    int(datastring_dict[beetle_addresses[idx]]))
-                                timestamp_dict[beetle_addresses[idx]].append(
-                                    ultra96_receiving_timestamp)
-                                handshake_flag_dict[beetle_addresses[idx]] = False
-                                clocksync_flag_dict[beetle_addresses[idx]] = True
-                                # clear serial input buffer to get ready for data packets
-                                datastring_dict[beetle_addresses[idx]] = ""
-                                buffer_dict[beetle_addresses[idx]] = ""
-                                print("beetle: %s" % (beetle_addresses[idx]))
-                                print(timestamp_dict[beetle_addresses[idx]])
-                                return
-                            elif char != '>':
-                                if char == '|':  # signify start of next timestamp
+                if incoming_data_flag[beetle_addresses[idx]] is True:
+                    if handshake_flag_dict[beetle_addresses[idx]] is True:
+                        buffer_dict[beetle_addresses[idx]
+                                    ] += data.decode('UTF-8')
+                        if '>' not in data.decode('UTF-8'):
+                            pass
+                        else:
+                            for char in buffer_dict[beetle_addresses[idx]]:
+                                if char == 'A':
+                                    ultra96_receiving_timestamp = time.time() * 1000
+                                    continue
+                                if char == '>':  # end of packet
                                     timestamp_dict[beetle_addresses[idx]].append(
                                         int(datastring_dict[beetle_addresses[idx]]))
+                                    timestamp_dict[beetle_addresses[idx]].append(
+                                        ultra96_receiving_timestamp)
+                                    handshake_flag_dict[beetle_addresses[idx]] = False
+                                    clocksync_flag_dict[beetle_addresses[idx]] = True
+                                    # clear serial input buffer to get ready for data packets
                                     datastring_dict[beetle_addresses[idx]] = ""
-                                else:
-                                    datastring_dict[beetle_addresses[idx]] += char
-                else:
-                    if '>' in data.decode('UTF-8'):
-                        buffer_dict[beetle_addresses[idx]
-                                    ] += data.decode('UTF-8')
-                        packet_count_dict[beetle_addresses[idx]] += 1
+                                    buffer_dict[beetle_addresses[idx]] = ""
+                                    print("beetle: %s" %
+                                          (beetle_addresses[idx]))
+                                    print(
+                                        timestamp_dict[beetle_addresses[idx]])
+                                    return
+                                elif char != '>':
+                                    if char == '|':  # signify start of next timestamp
+                                        timestamp_dict[beetle_addresses[idx]].append(
+                                            int(datastring_dict[beetle_addresses[idx]]))
+                                        datastring_dict[beetle_addresses[idx]] = ""
+                                    else:
+                                        datastring_dict[beetle_addresses[idx]] += char
                     else:
-                        buffer_dict[beetle_addresses[idx]
-                                    ] += data.decode('UTF-8')
-                    # send data to dashboard once every 10 datasets
-                    if packet_count_dict[beetle_addresses[idx]] % 10 == 0 and '>' in data.decode('UTF-8'):
-                        print("sending data to dashboard")
-                        """
-                        board_client.send_data_to_DB(
-                            beetle_addresses[idx], buffer_dict[beetle_addresses[idx]])
-                        """
+                        if '>' in data.decode('UTF-8'):
+                            buffer_dict[beetle_addresses[idx]
+                                        ] += data.decode('UTF-8')
+                            packet_count_dict[beetle_addresses[idx]] += 1
+                        else:
+                            buffer_dict[beetle_addresses[idx]
+                                        ] += data.decode('UTF-8')
+                        # send data to dashboard once every 10 datasets
+                        if packet_count_dict[beetle_addresses[idx]] % 10 == 0 and '>' in data.decode('UTF-8'):
+                            print("sending data to dashboard")
+                            """
+                            board_client.send_data_to_DB(
+                                beetle_addresses[idx], buffer_dict[beetle_addresses[idx]])
+                            """
 
 
-def initHandshake(beetle_peripheral, address):
+def initHandshake(beetle_peripheral):
     ultra96_sending_timestamp = time.time() * 1000
 
     for characteristic in beetle_peripheral.getCharacteristics():
         if characteristic.uuid == UUIDS.SERIAL_COMMS:
             ultra96_sending_timestamp = time.time() * 1000
-            timestamp_dict[address].append(ultra96_sending_timestamp)
+            timestamp_dict[beetle_peripheral.addr].append(
+                ultra96_sending_timestamp)
+            characteristic.write(
+                bytes('T', 'utf-8'), withResponse=False)
+            time.sleep(1)
             characteristic.write(
                 bytes('H', 'utf-8'), withResponse=False)
             while True:
                 if beetle_peripheral.waitForNotifications(10):
-                    if clocksync_flag_dict[address] is True:
-                        characteristic.write(
-                            bytes('A', 'utf-8'), withResponse=False)
+                    if clocksync_flag_dict[beetle_peripheral.addr] is True:
                         # function for time calibration
-                        clock_offset_dict[address].append(calculate_clock_offset(
-                            timestamp_dict[address]))
+                        clock_offset_dict[beetle_peripheral.addr].append(calculate_clock_offset(
+                            timestamp_dict[beetle_peripheral.addr]))
+                        timestamp_dict[beetle_peripheral.addr].clear()
                         print("beetle %s clock offset: %i" %
-                              (address, clock_offset_dict[address][-1]))
+                              (beetle_peripheral.addr, clock_offset_dict[beetle_peripheral.addr][-1]))
+                        clocksync_flag_dict[beetle_peripheral.addr] = False
                         return
                     else:
                         continue
@@ -106,8 +114,9 @@ def establish_connection(address):
                     beetle_peri_delegate = Delegate(address)
                     global_delegate_obj[idx] = beetle_peri_delegate
                     beetle_peripheral.withDelegate(beetle_peri_delegate)
-                    time.sleep(1)
-                    initHandshake(beetle_peripheral, address)
+                    incoming_data_flag[address] = True
+                    initHandshake(beetle_peripheral)
+                    incoming_data_flag[address] = False
                     print("Connected to %s" % (address))
                     return
         except Exception as e:
@@ -132,7 +141,7 @@ def reestablish_connection(beetle_peri, address):
 def getBeetleData(beetle_peri):
     while True:
         try:
-            if beetle_peri.waitForNotifications(20):
+            if beetle_peri.waitForNotifications(50):
                 print("getting data...")
                 print(packet_count_dict[beetle_peri.addr])
                 # if number of datasets received from all beetles exceed expectation
@@ -252,16 +261,16 @@ def processData(address):
 
 if __name__ == '__main__':
     # global variables
-    #beetle_addresses = ["1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE", "78:DB:2F:BF:3F:63", "78:DB:2F:BF:3F:23", "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
-    beetle_addresses = ["1C:BA:8C:1D:30:22", "78:DB:2F:BF:3B:54"]
+    #beetle_addresses = ["78:DB:2F:BF:3F:63", "78:DB:2F:BF:3F:23", "78:DB:2F:BF:3B:54", "1C:BA:8C:1D:30:22", "50:F1:4A:CB:FE:EE", "78:DB:2F:BF:3F:63"]
+    beetle_addresses = ["78:DB:2F:BF:3B:54", "50:F1:4A:CB:FE:EE"]
     global_delegate_obj = []
     global_beetle_periphs = []
     handshake_flag_dict = {"1C:BA:8C:1D:30:22": True, "50:F1:4A:CB:FE:EE": True, "78:DB:2F:BF:3F:63": True,
                            "78:DB:2F:BF:3F:23": True, "78:DB:2F:BF:3B:54": True, "78:DB:2F:BF:2C:E2": True}
     buffer_dict = {"1C:BA:8C:1D:30:22": "", "50:F1:4A:CB:FE:EE": "", "78:DB:2F:BF:3F:63": "", "78:DB:2F:BF:3F:23": "",
                    "78:DB:2F:BF:3B:54": "", "78:DB:2F:BF:2C:E2": ""}
-    buffer_dataset_dict = {"1C:BA:8C:1D:30:22": "", "50:F1:4A:CB:FE:EE": "", "78:DB:2F:BF:3F:63": "", "78:DB:2F:BF:3F:23": "",
-                           "78:DB:2F:BF:3B:54": "", "78:DB:2F:BF:2C:E2": ""}
+    incoming_data_flag = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:DB:2F:BF:3F:63": False,
+                          "78:DB:2F:BF:3F:23": False, "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
     # data global variables
     num_datasets = 50
     # {"78:DB:2F:BF:3F:23": {1: [100, 12.23, 14.45, 15.67]}, {2: [100, 14.56, -23.24, -16.78]}}
@@ -290,6 +299,7 @@ if __name__ == '__main__':
     end_flag = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:DB:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
                 "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
     # clock synchronization global variables
+    dance_count = 0
     clocksync_flag_dict = {"1C:BA:8C:1D:30:22": False, "50:F1:4A:CB:FE:EE": False, "78:DB:2F:BF:3F:63": False, "78:DB:2F:BF:3F:23": False,
                            "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
     timestamp_dict = {"1C:BA:8C:1D:30:22": [], "50:F1:4A:CB:FE:EE": [], "78:DB:2F:BF:3F:63": [], "78:DB:2F:BF:3F:23": [],
@@ -299,14 +309,14 @@ if __name__ == '__main__':
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle_periphs.append(0) for idx in range(len(beetle_addresses))]
-
+    """
     establish_connection("1C:BA:8C:1D:30:22")
     time.sleep(1)
+    """
 
-    """
-    establish_connection("50:F1:4A:CB:FE:EE")
+    establish_connection("78:DB:2F:BF:3B:54")
     time.sleep(1)
-    """
+
     """
     establish_connection("78:DB:2F:BF:3F:63")
     time.sleep(1)
@@ -315,7 +325,7 @@ if __name__ == '__main__':
     establish_connection("78:DB:2F:BF:3F:23")
     time.sleep(1)
     """
-    establish_connection("78:DB:2F:BF:3B:54")
+    establish_connection("50:F1:4A:CB:FE:EE")
     time.sleep(1)
 
     """
@@ -323,15 +333,38 @@ if __name__ == '__main__':
     """
     """
     eval_client = eval_client.Client(
-        "127.0.0.2", 8080, 6, "cg40024002group6")  # ip address is address of server
+        "192.168.1.101", 8080, 6, "cg40024002group6")  # ip address is address of server
+    """
+    """
     board_client = dashBoardClient.Client(
         "192.168.43.248", 8080, 6, "cg40024002group6")
     """
     while True:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
-            receive_data_futures = {data_executor.submit(
-                getBeetleData, beetle): beetle for beetle in global_beetle_periphs}
-        data_executor.shutdown(wait=True)
+        for beetle in global_beetle_periphs:
+            # do calibration once every 2 moves; change 2 to other values according to time calibration needs
+            if dance_count == 2:
+                print("Proceed to do time calibration...")
+                # clear clock_offset_dict for next time calibration
+                for address in clock_offset_dict.keys():
+                    clock_offset_dict[address].clear()
+                incoming_data_flag[beetle.addr] = True
+                initHandshake(beetle)
+                incoming_data_flag[beetle.addr] = False
+            else:
+                for characteristic in beetle.getCharacteristics():
+                    if characteristic.uuid == UUIDS.SERIAL_COMMS:
+                        characteristic.write(
+                            bytes('S', 'utf-8'), withResponse=False)
+            for characteristic in beetle.getCharacteristics():
+                if characteristic.uuid == UUIDS.SERIAL_COMMS:
+                    characteristic.write(
+                        bytes('A', 'utf-8'), withResponse=False)
+                    break
+            incoming_data_flag[beetle.addr] = True
+            getBeetleData(beetle)
+            incoming_data_flag[beetle.addr] = False
+        if dance_count == 2:
+            dance_count = 0
         pool = multiprocessing.Pool()
         workers = [pool.apply_async(processData, args=(address, ))
                    for address in beetle_addresses]
@@ -361,14 +394,14 @@ if __name__ == '__main__':
         print(beetle6_data_dict)
 
         # synchronization delay
-
+        """
         beetle1_time_ultra96 = calculate_ultra96_time(
             beetle1_data_dict, clock_offset_dict["1C:BA:8C:1D:30:22"][0])
-
         """
+
         beetle2_time_ultra96 = calculate_ultra96_time(
             beetle2_data_dict, clock_offset_dict["50:F1:4A:CB:FE:EE"][0])
-        """
+
         """
         beetle3_time_ultra96 = calculate_ultra96_time(
             beetle3_data_dict, clock_offset_dict["78:DB:2F:BF:3F:63"][0])
@@ -380,20 +413,18 @@ if __name__ == '__main__':
 
         beetle5_time_ultra96 = calculate_ultra96_time(
             beetle5_data_dict, clock_offset_dict["78:DB:2F:BF:3B:54"][0])
-
         """
         beetle6_time_ultra96 = calculate_ultra96_time(
             beetle6_data_dict, clock_offset_dict["78:DB:2F:BF:2C:E2"][0])
         """
-
         # max(beetle3_time_ultra96, ...) - min(beetle1_time_ultra96, ...)
-        sync_delay = max(beetle1_time_ultra96, beetle5_time_ultra96) - \
-            min(beetle1_time_ultra96, beetle5_time_ultra96)
-        print("Beetle 1 ultra 96 time: ", beetle1_time_ultra96)
+        sync_delay = max(beetle2_time_ultra96, beetle5_time_ultra96) - \
+            min(beetle2_time_ultra96, beetle5_time_ultra96)
+        #print("Beetle 1 ultra 96 time: ", beetle1_time_ultra96)
         #print("Beetle 2 ultra 96 time: ", beetle2_time_ultra96)
         #print("Beetle 3 ultra 96 time: ", beetle3_time_ultra96)
         #print("Beetle 4 ultra 96 time: ", beetle4_time_ultra96)
-        print("Beetle 5 ultra 96 time: ", beetle5_time_ultra96)
+        #print("Beetle 5 ultra 96 time: ", beetle5_time_ultra96)
         #print("Beetle 6 ultra 96 time: ", beetle6_time_ultra96)
         print("Synchronization delay is: ", sync_delay)
         """
@@ -403,12 +434,14 @@ if __name__ == '__main__':
         # ml_result = ("1 2 3", "muscle")
         ml_result = [worker.get() for worker in workers]
         """
-
+        """
         ml_result = ("1 2 3", "muscle")
         # send data to eval server
         # send data to dashboard server
-        """
+
         workers = pool.apply(eval_client.send_data, args=(
             ml_result[0], ml_result[1], sync_delay))
+        workers = pool.apply(eval_client.send_data_to_DB, args=(
+            "beetle 2", ml_result))
         """
-        break
+        dance_count += 1

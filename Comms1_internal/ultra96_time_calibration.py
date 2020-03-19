@@ -4,6 +4,8 @@ from concurrent import futures
 import multiprocessing
 import time
 from time_sync import *
+import eval_client
+import dashBoardClient
 
 
 class UUIDS:
@@ -69,9 +71,10 @@ def initHandshake(beetle_peripheral):
             ultra96_sending_timestamp = time.time() * 1000
             timestamp_dict[beetle_peripheral.addr].append(
                 ultra96_sending_timestamp)
+            """
             characteristic.write(
                 bytes('T', 'utf-8'), withResponse=False)
-            time.sleep(8)
+            """
             characteristic.write(
                 bytes('H', 'utf-8'), withResponse=False)
             while True:
@@ -111,10 +114,9 @@ def establish_connection(address):
                     time.sleep(1)
                     initHandshake(beetle_peripheral)
                     print("Connected to %s" % (address))
-                    break
-            break
-        except:
-            print("failed to connect to %s" % (address))
+                    return
+        except Exception as e:
+            print(e)
             time.sleep(1)
             continue
 
@@ -253,7 +255,7 @@ def processData(address):
 
 if __name__ == '__main__':
     # global variables
-    beetle_addresses = ["78:DB:2F:BF:3B:54"]
+    beetle_addresses = ["50:F1:4A:CB:FE:EE", "78:DB:2F:BF:3B:54"]
     global_delegate_obj = []
     global_beetle_periphs = []
     handshake_flag_dict = {"1C:BA:8C:1D:30:22": True, "50:F1:4A:CB:FE:EE": True, "78:D8:2F:BF:3F:63": True,
@@ -304,10 +306,10 @@ if __name__ == '__main__':
     establish_connection("1C:BA:8C:1D:30:22")
     time.sleep(1)
     """
-    """
+    
     establish_connection("50:F1:4A:CB:FE:EE")
     time.sleep(1)
-    """
+    
     """
     establish_connection("78:DB:2F:BF:3F:63")
     time.sleep(1)
@@ -316,12 +318,19 @@ if __name__ == '__main__':
     establish_connection("78:DB:2F:BF:3F:23")
     time.sleep(1)
     """
-
+    
     establish_connection("78:DB:2F:BF:3B:54")
-    time.sleep(1)
-
+    
     """
     establish_connection("78:DB:2F:BF:2C:E2")
+    """
+    """
+    try:
+        eval_client = eval_client.Client(
+            "192.168.1.101", 8080, 6, "cg40024002group6")  # ip address is address of server
+    except Exception as e:
+        print(e)
+    print("connected to eval")
     """
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
@@ -361,10 +370,10 @@ if __name__ == '__main__':
         beetle1_time_ultra96 = calculate_ultra96_time(
             beetle1_data_dict, clock_offset_dict["1C:BA:8C:1D:30:22"][0])
         """
-        """
+        
         beetle2_time_ultra96 = calculate_ultra96_time(
             beetle2_data_dict, clock_offset_dict["50:F1:4A:CB:FE:EE"][0])
-        """
+        
         """
         beetle3_time_ultra96 = calculate_ultra96_time(
             beetle3_data_dict, clock_offset_dict["78:DB:2F:BF:3F:63"][0])
@@ -373,16 +382,30 @@ if __name__ == '__main__':
         beetle4_time_ultra96 = calculate_ultra96_time(
             beetle4_data_dict, clock_offset_dict["78:DB:2F:BF:3F:23"][0])
         """
-
+        
         beetle5_time_ultra96 = calculate_ultra96_time(
             beetle5_data_dict, clock_offset_dict["78:DB:2F:BF:3B:54"][0])
-
+        
         """
         beetle6_time_ultra96 = calculate_ultra96_time(
             beetle6_data_dict, clock_offset_dict["78:DB:2F:BF:2C:E2"][0])
         """
-
-        print("Beetle 5 ultra 96 time: ", beetle5_time_ultra96)
+        sync_delay = max(beetle2_time_ultra96, beetle5_time_ultra96) - \
+            min(beetle2_time_ultra96, beetle5_time_ultra96)
+        #print("Beetle 1 ultra 96 time: ", beetle1_time_ultra96)
+        #print("Beetle 2 ultra 96 time: ", beetle2_time_ultra96)
+        #print("Beetle 3 ultra 96 time: ", beetle3_time_ultra96)
+        #print("Beetle 4 ultra 96 time: ", beetle4_time_ultra96)
+        #print("Beetle 5 ultra 96 time: ", beetle5_time_ultra96)
+        #print("Beetle 6 ultra 96 time: ", beetle6_time_ultra96)
+        print("Synchronization delay is: ", sync_delay)
+        """
+        ml_result = ("1 2 3", "muscle")
+        # send data to eval server
+        # send data to dashboard server
+        eval_client.send_data(ml_result[0], ml_result[1], str(sync_delay))
+        """
+        """
         dance_count += 1
         # do calibration once every 2 moves; change 2 to other values according to time calibration needs
         if dance_count == 2:
@@ -390,6 +413,7 @@ if __name__ == '__main__':
             # clear clock_offset_dict for next time calibration
             for address in clock_offset_dict.keys():
                 clock_offset_dict[address].clear()
+            time.sleep(5)
             with concurrent.futures.ThreadPoolExecutor(max_workers=7) as time_executor:
                 time_calibrate_futures = {time_executor.submit(
                     initHandshake, beetle): beetle for beetle in global_beetle_periphs}
@@ -401,6 +425,7 @@ if __name__ == '__main__':
                     if characteristic.uuid == UUIDS.SERIAL_COMMS:
                         characteristic.write(
                             bytes('S', 'utf-8'), withResponse=False)
+        """
         """
         ml_future = futures.ProcessPoolExecutor(max_workers=None)
         ml_process = ml_future.submit(executeMachineLearning)
