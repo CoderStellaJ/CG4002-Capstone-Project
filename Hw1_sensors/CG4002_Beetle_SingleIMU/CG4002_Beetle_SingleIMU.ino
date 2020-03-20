@@ -23,6 +23,9 @@ uint8_t fifoBuffer[64]; // FIFO storage buffer
 // orientation/motion vars
 Quaternion q;           // [w, x, y, z]         quaternion container
 VectorFloat gravity;    // [x, y, z]            gravity vector
+VectorInt16 accel;      // [x, y, z]            accel sensor measurements
+VectorInt16 accelReal;  // [x, y, z]            gravity-free accel sensor measurements
+VectorInt16 accelWorld; // [x, y, z]            world-frame accel sensor measurements
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
@@ -42,7 +45,7 @@ void dmpDataReady() {
 }
 
 // Function to get yaw pitch roll values
-int getYPR() {
+int getYPR_worldAccel() {
   // if programming failed, don't try to do anything
   if (!dmpReady) return;
 
@@ -83,6 +86,12 @@ int getYPR() {
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
+    // display initial world-frame acceleration, adjusted to remove gravity
+    // and rotated based on known orientation from quaternion
+    mpu.dmpGetAccel(&accel, fifoBuffer);
+    mpu.dmpGetLinearAccel(&accelReal, &accel, &gravity);
+    mpu.dmpGetLinearAccelInWorld(&accelWorld, &accelReal, &q);
+
     // Indicate that the data retrieval is successful
     return 1;
   }
@@ -112,11 +121,12 @@ void setup() {
   devStatus = mpu.dmpInitialize();
 
   // supply your own gyro offsets here, scaled for min sensitivity
-  mpu.setXGyroOffset(220);
-  mpu.setYGyroOffset(76);
-  mpu.setZGyroOffset(-85);
-  mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
-// make sure it worked (returns 0 if so)
+  mpu.setXGyroOffset(-102);
+  mpu.setYGyroOffset(-84);
+  mpu.setZGyroOffset(-659);
+  mpu.setZAccelOffset(1257);
+  
+  // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
     // turn on the DMP, now that it's ready
     Serial.println(F("Enabling DMP..."));
@@ -152,7 +162,7 @@ void loop() {
   // Get two YPRs at the start to avoid FIFO overflow issues
   // Get an initial YPR value
   while (1) {
-    if (getYPR() == 1) {
+    if (getYPR_worldAccel() == 1) {
       ypr_firstCheck[0] = ypr[0] * 180/M_PI;
       ypr_firstCheck[1] = ypr[1] * 180/M_PI;
       ypr_firstCheck[2] = ypr[2] * 180/M_PI;
@@ -165,20 +175,13 @@ void loop() {
   
   // Get a secondary YPR value
   while (1) {
-    if (getYPR() == 1) {
+    if (getYPR_worldAccel() == 1) {
       ypr_lastCheck[0] = ypr[0] * 180/M_PI;
       ypr_lastCheck[1] = ypr[1] * 180/M_PI;
       ypr_lastCheck[2] = ypr[2] * 180/M_PI;
       break;
     }
   }
-
-//  Serial.println(ypr_firstCheck[0]);
-//  Serial.println(ypr_firstCheck[1]);
-//  Serial.println(ypr_firstCheck[2]);
-//  Serial.println(ypr_lastCheck[0]);
-//  Serial.println(ypr_lastCheck[1]);
-//  Serial.println(ypr_lastCheck[2]);
   
   // Compute the differences between these 2 YPR values to detect if there is a sudden movement 
   yawDiff = ypr_lastCheck[0] - ypr_firstCheck[0];
@@ -192,16 +195,22 @@ void loop() {
     timestamp = millis();
     // Loop to get 50 samples from MPU6050 at the frequency of 20Hz
     for (int i = 0; i < 50; i++) {
-      if (getYPR() == 0) {
+      if (getYPR_worldAccel() == 0) {
         i--;
         continue;
       }
-      Serial.print("ypr\t");
+      Serial.print("ypr accelWorld\t");
       Serial.print(ypr[0] * 180/M_PI);
       Serial.print("\t");
       Serial.print(ypr[1] * 180/M_PI);
       Serial.print("\t");
-      Serial.println(ypr[2] * 180/M_PI);
+      Serial.print(ypr[2] * 180/M_PI);
+      Serial.print("\t");
+      Serial.print(accelWorld.x);
+      Serial.print("\t");
+      Serial.print(accelWorld.y);
+      Serial.print("\t");
+      Serial.println(accelWorld.z);
       delay(50);
     }
   }
