@@ -30,21 +30,26 @@ class Client():
         self.socket.connect(server_address)
         # testing on laptop
         # self.timeout = 60
-        print("client is connected!")
+        print("[Dashboard Client] client is connected!")
 
     def add_padding(self, plain_text):
         pad = lambda s: s + (BLOCK_SIZE - (len(s) % BLOCK_SIZE)) * PADDING
         padded_plain_text = pad(plain_text)
-        print("padded_plain_text length: ", len(padded_plain_text))
+        print("[Dashboard Client] padded_plain_text length: ", len(padded_plain_text))
         return padded_plain_text
     
     def send_data_to_DB(self, table, data):
         
         #dataList = list(data.values())
+<<<<<<< HEAD
         encrypted_text = self.encrypt_message_DB(table, data)
         print("encrypted_text: ", encrypted_text)
+=======
+        encrypted_text = self.encrypt_message_DB(table, dataDict)
+        print("[Dashboard Client] encrypted_text: ", encrypted_text)
+>>>>>>> 6d90a7cf7bfb20db97821969df88923e9033e11e
         sent_message = encrypted_text
-        print("sent_message length: ", len(sent_message))
+        print("[Dashboard Client] sent_message length: ", len(sent_message))
         self.socket.sendall(sent_message)
 
     def encrypt_message_DB(self, table, dataDict):
@@ -52,7 +57,7 @@ class Client():
 ##        for dataPoint in data:
 ##            plain_text += dataPoint + " | "
         plain_text = "#" + table + " | " + str(dataDict)
-        print("plain_text: ", plain_text)
+        print("[Dashboard Client] plain_text: ", plain_text)
         padded_plain_text = self.add_padding(plain_text)
         iv = Random.new().read(AES.block_size)
         aes_key = bytes(str(self.secret_key), encoding="utf8")

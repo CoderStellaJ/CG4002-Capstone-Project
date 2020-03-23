@@ -22,17 +22,17 @@ class Client():
         self.socket.connect(server_address)
         # testing on laptop
         # self.timeout = 60
-        print("[Evaluation Client] evaluation client is connected!")
+        print("client is connected!")
 
     def add_padding(self, plain_text):
         pad = lambda s: s + (BLOCK_SIZE - (len(s) % BLOCK_SIZE)) * PADDING
         padded_plain_text = pad(plain_text)
-        print("[Evaluation Client] padded_plain_text length: ", len(padded_plain_text))
+        print("padded_plain_text length: ", len(padded_plain_text))
         return padded_plain_text
 
     def encrypt_message(self, position, action, syncdelay):
         plain_text = '#' + position + '|' + action + '|' + syncdelay + '|'
-        print("[Evaluation Client] plain_text: ", plain_text)
+        print("plain_text: ", plain_text)
         padded_plain_text = self.add_padding(plain_text)
         iv = Random.new().read(AES.block_size)
         aes_key = bytes(str(self.secret_key), encoding="utf8")
@@ -43,9 +43,9 @@ class Client():
 
     def send_data(self, position, action, syncdelay):
         encrypted_text = self.encrypt_message(position, action, syncdelay)
-        print("[Evaluation Client] encrypted_text: ", encrypted_text)
+        print("encrypted_text: ", encrypted_text)
         sent_message = encrypted_text
-        print("[Evaluation Client] sent_message length: ", len(sent_message))
+        print("sent_message length: ", len(sent_message))
         self.socket.sendall(sent_message)
 
     def stop(self):
@@ -56,7 +56,7 @@ class Client():
 
 def main():
     if len(sys.argv) != 5:
-        print('[Evaluation Client] Invalid number of arguments')
+        print('Invalid number of arguments')
         print('python eval_client.py [IP address] [Port] [groupID] [secret key]')
         sys.exit()
 

@@ -37,7 +37,7 @@ volatile float rollDiff = 0.0;
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 
 // Communication variables
-char transmit_buffer[19];
+char transmit_buffer[40];
 char timestamp_arr[10];
 unsigned long timestamp = 0;
 bool is_new_move = false;
@@ -92,7 +92,6 @@ int getYPR() {
 }
 
 void setup() {
-  timestamp = millis();
   // join I2C bus (I2Cdev library doesn't do this automatically)
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
   Wire.begin();
@@ -106,12 +105,11 @@ void setup() {
   mpu.initialize();
   // load and configure the DMP
   devStatus = mpu.dmpInitialize();
-
   // supply your own gyro offsets here, scaled for min sensitivity
-  mpu.setXGyroOffset(220);
-  mpu.setYGyroOffset(76);
-  mpu.setZGyroOffset(-85);
-  mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+  mpu.setXGyroOffset(48);
+  mpu.setYGyroOffset(-1);
+  mpu.setZGyroOffset(-28);
+  mpu.setZAccelOffset(4077);
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
     // turn on the DMP, now that it's ready
@@ -156,114 +154,78 @@ void receiveHandshakeAndClockSync()
 }
 
 void loop() {
-  // Get two YPRs at the start to avoid FIFO overflow issues
-  // Get an initial YPR value
-  while (1) {
+  /*
+    // Get two YPRs at the start to avoid FIFO overflow issues
+    // Get an initial YPR value
+    while (1) {
     if (getYPR() == 1) {
       ypr_firstCheck[0] = ypr[0] * 180 / M_PI;
       ypr_firstCheck[1] = ypr[1] * 180 / M_PI;
       ypr_firstCheck[2] = ypr[2] * 180 / M_PI;
       break;
     }
-  }
+    }
 
-  // Set a small delay to get next YPR value
-  delay(50);
+    // Set a small delay to get next YPR value
+    delay(50);
 
-  // Get a secondary YPR value
-  while (1) {
+    // Get a secondary YPR value
+    while (1) {
     if (getYPR() == 1) {
       ypr_lastCheck[0] = ypr[0] * 180 / M_PI;
       ypr_lastCheck[1] = ypr[1] * 180 / M_PI;
       ypr_lastCheck[2] = ypr[2] * 180 / M_PI;
       break;
     }
-  }
-  // Compute the differences between these 2 YPR values to detect if there is a sudden movement
-  yawDiff = ypr_lastCheck[0] - ypr_firstCheck[0];
-  pitchDiff = ypr_lastCheck[1] - ypr_firstCheck[1];
-  rollDiff = ypr_lastCheck[2] - ypr_firstCheck[2];
-  /*
-  int chksum = 0;
-  char yaw[5];
-  char pitch[5];
-  char roll[5];
-  strcat(transmit_buffer, "D");
-  Serial.print('D');
-  ultoa(timestamp, timestamp_arr, 10);
-  strcat(transmit_buffer, timestamp_arr);
-  Serial.print(timestamp_arr);
-  strcat(transmit_buffer, ",");
-  Serial.print(',');
-  dtostrf(12.23, 5, 2, yaw);
-  strcat(transmit_buffer, yaw);
-  strcat(transmit_buffer, ",");
-  Serial.print(yaw);
-  Serial.print(',');
-  dtostrf(15.52, 5, 2, pitch);
-  strcat(transmit_buffer, pitch);
-  strcat(transmit_buffer, ",");
-  Serial.print(pitch);
-  Serial.print(',');
-  dtostrf(17.26, 5, 2, roll);
-  strcat(transmit_buffer, roll);
-  Serial.print(roll);
-  for (int a = 0; a < strlen(transmit_buffer); a++) {
-    chksum ^= transmit_buffer[a];
-  }
-  Serial.print('|');
-  Serial.print(chksum);
-  Serial.print('>');
-  memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
-  */
-  // Have to decide on a good thresholding value to determine the flag
-  // Serial.println(abs(yawDiff));
-  // Serial.println(abs(pitchDiff));
-  // Serial.println(abs(rollDiff));
-  // Only start taking data if there is a spike is found in either one of the three differences
-  if (abs(yawDiff) >= 20 || abs(pitchDiff) >= 10 || abs(rollDiff) >= 10) {
-    // Get the initial timestamp of this new dance move
-    timestamp = millis();
-    // Loop to get 50 samples from MPU6050 at the frequency of 20Hz
-    for (int i = 0; i < 50; i++) {
-      if (getYPR() == 0) {
-        i--;
-        Serial.println(timestamp);
-        continue;
-      }
-        int chksum = 0;
-        char yaw[5];
-        char pitch[5];
-        char roll[5];
-        strcat(transmit_buffer, "D");
-        Serial.print('D');
-        ultoa(timestamp, timestamp_arr, 10);
-        strcat(transmit_buffer, timestamp_arr);
-        Serial.print(timestamp_arr);
-        strcat(transmit_buffer, ",");
-        Serial.print(',');
-        dtostrf(ypr[0] * 180 / M_PI, 5, 2, yaw);
-        strcat(transmit_buffer, yaw);
-        strcat(transmit_buffer, ",");
-        Serial.print(yaw);
-        Serial.print(',');
-        dtostrf(ypr[1] * 180 / M_PI, 5, 2, pitch);
-        strcat(transmit_buffer, pitch);
-        strcat(transmit_buffer, ",");
-        Serial.print(pitch);
-        Serial.print(',');
-        dtostrf(ypr[2] * 180 / M_PI, 5, 2, roll);
-        strcat(transmit_buffer, roll);
-        Serial.print(roll);
-        for (int a = 0; a < strlen(transmit_buffer); a++) {
-        chksum ^= transmit_buffer[a];
-        }
-        Serial.print('|');
-        Serial.print(chksum);
-        Serial.print('>');
-        memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
-      delay(50);
     }
+    // Compute the differences between these 2 YPR values to detect if there is a sudden movement
+    yawDiff = ypr_lastCheck[0] - ypr_firstCheck[0];
+    pitchDiff = ypr_lastCheck[1] - ypr_firstCheck[1];
+    rollDiff = ypr_lastCheck[2] - ypr_firstCheck[2];
+    // Have to decide on a good thresholding value to determine the flag
+    // Serial.println(abs(yawDiff));
+    // Serial.println(abs(pitchDiff));
+    // Serial.println(abs(rollDiff));
+  */
+  // Get the initial timestamp of this new dance move
+  timestamp = millis();
+  // Loop to get 50 samples from MPU6050 at the frequency of 20Hz
+  for (int i = 0; i < 50; i++) {
+    if (getYPR() == 0) {
+      i--;
+      continue;
+    }
+    int chksum = 0;
+    char yaw[5];
+    char pitch[5];
+    char roll[5];
+    strcat(transmit_buffer, "D");
+    Serial.print('D');
+    ultoa(timestamp, timestamp_arr, 10);
+    strcat(transmit_buffer, timestamp_arr);
+    Serial.print(timestamp_arr);
+    strcat(transmit_buffer, ",");
+    Serial.print(',');
+    dtostrf(ypr[0] * 180 / M_PI, 5, 2, yaw);
+    strcat(transmit_buffer, yaw);
+    strcat(transmit_buffer, ",");
+    Serial.print(yaw);
+    Serial.print(',');
+    dtostrf(ypr[1] * 180 / M_PI, 5, 2, pitch);
+    strcat(transmit_buffer, pitch);
+    strcat(transmit_buffer, ",");
+    Serial.print(pitch);
+    Serial.print(',');
+    dtostrf(ypr[2] * 180 / M_PI, 5, 2, roll);
+    strcat(transmit_buffer, roll);
+    Serial.print(roll);
+    for (int a = 0; a < strlen(transmit_buffer); a++) {
+      chksum ^= transmit_buffer[a];
+    }
+    Serial.print('|');
+    Serial.print(chksum);
+    Serial.println('>');
+    memset(&transmit_buffer[0], 0, sizeof(transmit_buffer));
+    delay(50);
   }
-  delay(50000);
 }

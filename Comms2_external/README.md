@@ -4,6 +4,11 @@
 2. Information encryption
 3. Synchronization delay between the dancers
 
+### Connect to evaluation server during evaluation
+**Remember to turn off firewall**
+```
+python eval_client.py 137.132.92.80 4000 6 cg40024002group6
+```
 ### Run server and client
 1. run server
 2. run client
@@ -13,7 +18,6 @@ cd C:\Repository\CG4002-Capstone-Project\Comms2_external
 python eval_server.py 127.0.0.1 8888 6
 python eval_client.py 127.0.0.1 8888 6 cg40024002group6
 ```
-
 secret key (length is 16):
 ```
 cg40024002group6
