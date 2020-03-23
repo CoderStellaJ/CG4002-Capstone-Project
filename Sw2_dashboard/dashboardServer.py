@@ -3,6 +3,7 @@ import os
 import sys
 import random
 import time
+import json
 
 import socket
 import threading
@@ -17,7 +18,7 @@ import psycopg2
 from random import seed
 from random import random
 
-from dbAPI import showTable,addValue #import function from
+from dbAPI import showTable,addValue,addML #import function from dbAPI.py
 
 MESSAGE_SIZE = 3 # position, 1 action, sync
 
@@ -30,7 +31,7 @@ class Server(threading.Thread):
         self.shutdown = threading.Event()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_address = (ip_addr, port_num)
-
+        #server_address = (ip_addr, port_num)
         print('starting up on %s port %s' % server_address, file=sys.stderr)
         self.socket.bind(server_address)
 
@@ -64,8 +65,40 @@ class Server(threading.Thread):
             data = self.connection.recv(1024)
 
             if data:
-                obj = self.decrypt_message(data)
-                print(obj)
+                try:
+                    message = self.decrypt_message(data)
+                    if(message != ""):
+                        
+                        splitStr = message.split(' | ')
+                        print(splitStr)
+                        try:
+                            table = ''
+
+                            if(splitStr[0] == "78:DB:2F:BF:3B:54"):
+                                table = "Dancer1"
+                                dataPoint = eval(splitStr[1])
+                                addValue(table, "test", dataPoint[1], dataPoint[2], dataPoint[3])
+                                
+                            elif(splitStr[0] == "50:F1:4A:CB:FE:EE"):
+                                dataPoint = eval(splitStr[1])
+                                table = "Dancer2"
+                                addValue(table, "test", dataPoint[1], dataPoint[2], dataPoint[3])
+                            #elif(splitStr[0] == "MLDancer1234567"):
+                                #addValue("MLDancer1", splitStr)
+                        except:
+                            print(splitStr)
+                except:
+                    print("Data failure")
+                        
+
+                    
+                    
+                    
+                    
+                
+                ##get the message and store the last value
+                #49 - [1] = YAW, [2] = PITCH, [3] = ROLL
+                #2 Beetles
                 #print(self.decrypt_message(data))
                 #addValue("testTable", obj['position'],obj['action'],str((float(obj['sync']) + self.i)))
                 #self.i += 1.0 # generate a random value
@@ -85,15 +118,14 @@ class Server(threading.Thread):
     def decrypt_message(self, cipher_text):
         decoded_message = base64.b64decode(cipher_text)
         iv = decoded_message[:16]
-        secret_key = bytes(str(self.secret_key), encoding="utf8")
+        secret_key = bytes(str(self.secret_key), encoding="iso-8859-1")
 
         cipher = AES.new(secret_key, AES.MODE_CBC, iv)
         decrypted_message = cipher.decrypt(decoded_message[16:]).strip()
-        decrypted_message = decrypted_message.decode('utf8')
+        decrypted_message = decrypted_message.decode('iso-8859-1')
 
         decrypted_message = decrypted_message[decrypted_message.find('#'):]
-        decrypted_message = bytes(decrypted_message[1:], 'utf8').decode('utf8')
-
+        decrypted_message = bytes(decrypted_message[1:], 'iso-8859-1').decode('iso-8859-1')
 ##        messages = decrypted_message.split('|')
 ##        position, action, sync = messages[:MESSAGE_SIZE]
         
@@ -136,10 +168,12 @@ def main():
 ##        sys.exit()
 ##
     ip_addr = sys.argv[1]
-    port_num = int(sys.argv[2])
-    group_id = sys.argv[3]
+    #port_num = int(sys.argv[2])
+    #group_id = sys.argv[3]
 
-    my_server = Server(ip_addr, port_num, group_id)
+    my_server = Server(ip_addr, 8080, 6)
+    #my_server = Server("172.25.102.237", 8080, 6)
+    ##my_server = Server(ip_addr, port_num, group_id)
     my_server.start()
 
 if __name__ == '__main__':
