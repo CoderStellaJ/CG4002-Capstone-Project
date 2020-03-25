@@ -19,6 +19,9 @@ The following are the features (frequency/time domain features) extracted from t
   - Mean Amplitude (time domain)
   - Max Amplitude Value (time domain)
   - Root Mean Square: Amplitude (time domain)
-  - Standard Deviation? (time domain) 
+  - Mean Frequency (frequency domain) 
   
-These data will allow us to identify the fatigue level of the muscle based on the following papers 
+These data will allow us to identify the fatigue level of the muscle based on the following paper(s) and link(s):
+  - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6679263/
+  - https://www.wavemetrics.com/products/igorpro/dataanalysis/signalprocessing
+  - https://www.norwegiancreations.com/2017/08/what-is-fft-and-how-can-you-implement-it-on-an-arduino/
