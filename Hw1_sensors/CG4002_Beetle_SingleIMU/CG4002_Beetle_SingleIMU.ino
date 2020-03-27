@@ -36,9 +36,6 @@ volatile float yawDiff = 0.0;
 volatile float pitchDiff = 0.0;
 volatile float rollDiff = 0.0;
 
-// Communication variables
-char transmit_buffer[40];
-char timestamp_arr[10];
 unsigned long timestamp = 0;
 
 // Interrupt detection routine
@@ -111,7 +108,7 @@ void setup() {
   #endif
 
   Serial.begin(115200);
-  receiveHandshakeAndClockSync();
+
   // initialize MPU6050 IMU device
   mpu.initialize();
 

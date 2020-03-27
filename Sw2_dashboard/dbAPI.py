@@ -20,7 +20,19 @@ def addValue(tableName, *data):
     count = cursor.rowcount
     #lastRow = cursor.fetchone()#contains last row being stored
     print(count, "Value saved into " + tableName)
+    print(query)
     #return lastRow
+
+def addML(table, data):
+    print(data)
+    query = "INSERT INTO " + table + " VALUES ("+ data +")" #inserts value into the table
+    #query += "RETURNING " + str(dataList).strip('[]') #stores the last value that is being added
+    cursor.execute(query)
+    connection.commit()
+    count = cursor.rowcount
+    #lastRow = cursor.fetchone()#contains last row being stored
+    print(count, "Value saved into " + table)
+    print(query)
     
     
 #Function to show all rows in Table
@@ -54,7 +66,7 @@ def createTable(tableName, *columnNames):
     first = True
     for column in columns:
         if first:
-            query += "\n" + column + " TEXT NOT NULL"
+            query += "\n" + column + " NUMERIC NOT NULL"
             first = False
         else:
             query += ", \n" + column + " NUMERIC NOT NULL"
@@ -96,20 +108,26 @@ def fakeData(Dancer):
 
 #testing
 if __name__ == '__main__':
-
+    #createTable("MLDancer1", "Dancer1")
+    ##6 Beetles---------> Yaw,pitch,roll,X-Axis,Y-Axis,Z-Axis
+    ##EMG ------------> mean amplitude(MeanAmp),root mean square amplitude(RMSAmp) mean frequency(MeanFreq)
+##    createTable("Beetle3", "Yaw", "Pitch", "Row", "Xaxis", "Yaxis", "Zaxis")
+    addValue("Beetle6", "-20.00", "-40.00", "-60.00", "-100.00", "-120.00", "-180.00")
+##    for no in range(1,7):
+##        showTable("Beetle" + str(no))
     
-    change()
-    fakeData("Dancer1")
-    fakeData("Dancer2")
-    fakeData("Dancer3")
-    #createTable("Dancer2", "GroundTruth", "Yaw", "Pitch", "Roll")
+    #change()
+    #fakeData("Dancer1")
+    #fakeData("Dancer2")
+    #fakeData("Dancer3")
+    
     #createTable("Dancer3", "GroundTruth", "Yaw", "Pitch", "Roll")
     #showTable("Dancer3")
     #showTable("Dancer2")
-    #showTable("Dancer3")
+    
     #clearTable("Dancer1")
     #addValue("test", "NEWNEWNNewValueHellos", "IdasdsssS", "32.0")
-    #addValue("Hello","1.0","2.0", "3.0")
+    #addValue("MLDancer1","dumbbell")
     #showTable("Hello")
     #getLastRow("testTable")
     #showTable("testTable")

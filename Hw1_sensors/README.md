@@ -16,8 +16,12 @@ The following are the steps prior to using the code to gather data:
 
 ### EMG Features  ###
 The following are the features (frequency/time domain features) extracted from the data by EMG:
-  - Mean? (time domain)
-  - Standard Deviation? (time domain) 
-  - Max/Min amplitude value? (time domain)
+  - Mean Amplitude (time domain)
+  - Max Amplitude Value (time domain)
+  - Root Mean Square: Amplitude (time domain)
+  - Mean Frequency (frequency domain) 
   
-These data will allow us to identify the fatigue level of the muscle based on the following papers 
+These data will allow us to identify the fatigue level of the muscle based on the following paper(s) and link(s):
+  - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6679263/
+  - https://www.wavemetrics.com/products/igorpro/dataanalysis/signalprocessing
+  - https://www.norwegiancreations.com/2017/08/what-is-fft-and-how-can-you-implement-it-on-an-arduino/
