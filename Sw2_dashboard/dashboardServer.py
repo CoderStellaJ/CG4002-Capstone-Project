@@ -135,9 +135,12 @@ def main():
 ##        print('python server.py [IP address] [Port] [groupID]')
 ##        sys.exit()
 ##
-    ip_addr = sys.argv[1]
-    port_num = int(sys.argv[2])
-    group_id = sys.argv[3]
+    #ip_addr = sys.argv[1]
+    #port_num = int(sys.argv[2])
+    #group_id = sys.argv[3]
+    ip_addr = "0.0.0.0"
+    port_num = 8080
+    group_id = 6
 
     my_server = Server(ip_addr, port_num, group_id)
     my_server.start()
