@@ -30,15 +30,6 @@
 double vReal[SAMPLES];
 double vImag[SAMPLES];
 double frequency[SAMPLES/2];
-double meanFrequency = 0;
-double powerSpectrum = 0;
-double powerSpectrumAndFreq = 0;
-
-double totalSensorValue = 0;
-double meanSquaredValue = 0;
-float meanAmplitude = 0;
-float rmsAmplitude = 0;
-float maxAmplitude = -1;
 
 arduinoFFT FFT = arduinoFFT();
 
@@ -50,33 +41,42 @@ void setup() {
 
 // the loop routine runs over and over again forever:
 void loop() {
+  double meanFrequency = 0;
+  long long powerSpectrum = 0;
+  long long powerSpectrumAndFreq = 0;
+  
+  double totalSensorValue = 0;
+  double meanSquaredValue = 0;
+  float meanAmplitude = 0;
+  float rmsAmplitude = 0;
+  float maxAmplitude = -1;
   
   // Collect 128 samples at the frequency of 1kHz, 128ms window period
   for (int i = 0; i < SAMPLES; i++) {
     float sensorValue = analogRead(A0);
-    sensorValue = (sensorValue / 1024.0) * 5.0;
+    float convertedSensorValue = (sensorValue / 1024.0) * 5.0;
 
     // Collection of data for ArduinoFFT
     vReal[i] = sensorValue;
     vImag[i] = 0;
-
+    Serial.println(sensorValue);
     // Recording the frequency
     if (i < SAMPLES/2) {
       frequency[i] = ((i * 1.0 * SAMPLING_FREQUENCY) / (SAMPLES * 1.0));
     }
 
     // Compute the sum of all samples collected
-    totalSensorValue += sensorValue;
+    totalSensorValue += convertedSensorValue;
 
     // Compute the sum of the squared value
-    meanSquaredValue += (sensorValue * sensorValue);
+    meanSquaredValue += (convertedSensorValue * convertedSensorValue);
 
     // Gather the largest amplitude of the EMG signal
     if (sensorValue > maxAmplitude) {
-      maxAmplitude = sensorValue;
+      maxAmplitude = convertedSensorValue;
     }
 
-    Serial.println(sensorValue);
+    // Serial.println(sensorValue);
     
     // Delay for a period of 1ms such that the frequency is 1kHz
     delay(1);
@@ -87,20 +87,23 @@ void loop() {
   FFT.Compute(vReal, vImag, SAMPLES, FFT_FORWARD);
   FFT.ComplexToMagnitude(vReal, vImag, SAMPLES);
 
-  Serial.print("FFT");
+  // Serial.println("FFT");
 
   // Computing the mean frequency based on the formula in the research paper, sum of frequency multipled power spectra over sum of power spectra
   // The power spectra is computed by squaring the amplitude
   for (int i = 0; i < SAMPLES / 2; i++) {
     // Computing the power spectra value
-    Serial.println(frequency[i]);
-    Serial.println(vReal[i]); 
+    // Serial.println(frequency[i]);
+    // Serial.print("vReal: ");
+    // Serial.println(vReal[i]); 
     double powerSpec = vReal[i] * vReal[i];
     powerSpectrum += powerSpec;
     powerSpectrumAndFreq += (powerSpec * frequency[i]);
   }
 
   // Computing the mean frequency
+  // Serial.println(powerSpectrumAndFreq);
+  // Serial.println(powerSpectrum);
   meanFrequency = (powerSpectrumAndFreq * 1.0) / (powerSpectrum * 1.0);
 
   // Computing the mean amplitude value
@@ -119,5 +122,5 @@ void loop() {
   Serial.print("mean freq: ");
   Serial.println(meanFrequency);
 
-  delay(99999999999999999999);
+  delay(99999999);
 }
