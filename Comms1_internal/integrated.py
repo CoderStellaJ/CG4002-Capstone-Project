@@ -7,9 +7,10 @@ import time
 from time_sync import *
 import eval_client
 import dashBoardClient
-import pickle
+from joblib import dump, load
 import numpy  # to count labels and store in dict
 import operator  # to get most predicted label
+import json
 
 
 class UUIDS:
@@ -28,8 +29,6 @@ class Delegate(btle.DefaultDelegate):
             if global_delegate_obj[idx] == self:
                 print("receiving data from %s" % (beetle_addresses[idx]))
                 print("data: " + data.decode('ISO-8859-1'))
-                if 'C' in data.decode('ISO-8859-1'):
-                    response_dict[beetle_addresses[idx]] += 'C'
                 if incoming_data_flag[beetle_addresses[idx]] is True and relative_position_flag[beetle_addresses[idx]] is True and handshake_flag_dict[beetle_addresses[idx]] is False:
                     position_buffer[beetle_addresses[idx]
                                     ] += data.decode('ISO-8859-1')
@@ -43,32 +42,35 @@ class Delegate(btle.DefaultDelegate):
                         if '>' not in data.decode('ISO-8859-1'):
                             pass
                         else:
-                            for char in buffer_dict[beetle_addresses[idx]]:
-                                if char == 'A':
-                                    ultra96_receiving_timestamp = time.time() * 1000
-                                    continue
-                                if char == '>':  # end of packet
-                                    timestamp_dict[beetle_addresses[idx]].append(
-                                        int(datastring_dict[beetle_addresses[idx]]))
-                                    timestamp_dict[beetle_addresses[idx]].append(
-                                        ultra96_receiving_timestamp)
-                                    handshake_flag_dict[beetle_addresses[idx]] = False
-                                    clocksync_flag_dict[beetle_addresses[idx]] = True
-                                    # clear serial input buffer to get ready for data packets
-                                    datastring_dict[beetle_addresses[idx]] = ""
-                                    buffer_dict[beetle_addresses[idx]] = ""
-                                    print("beetle: %s" %
-                                          (beetle_addresses[idx]))
-                                    print(
-                                        timestamp_dict[beetle_addresses[idx]])
-                                    return
-                                elif char != '>':
-                                    if char == '|':  # signify start of next timestamp
+                            if 'A' in buffer_dict[beetle_addresses[idx]]:
+                                for char in buffer_dict[beetle_addresses[idx]]:
+                                    if char == 'A':
+                                        ultra96_receiving_timestamp = time.time() * 1000
+                                        continue
+                                    if char == '>':  # end of packet
                                         timestamp_dict[beetle_addresses[idx]].append(
                                             int(datastring_dict[beetle_addresses[idx]]))
+                                        timestamp_dict[beetle_addresses[idx]].append(
+                                            ultra96_receiving_timestamp)
+                                        handshake_flag_dict[beetle_addresses[idx]] = False
+                                        clocksync_flag_dict[beetle_addresses[idx]] = True
+                                        # clear serial input buffer to get ready for data packets
                                         datastring_dict[beetle_addresses[idx]] = ""
-                                    else:
-                                        datastring_dict[beetle_addresses[idx]] += char
+                                        buffer_dict[beetle_addresses[idx]] = ""
+                                        print("beetle: %s" %
+                                              (beetle_addresses[idx]))
+                                        print(
+                                            timestamp_dict[beetle_addresses[idx]])
+                                        return
+                                    elif char != '>':
+                                        if char == '|':  # signify start of next timestamp
+                                            timestamp_dict[beetle_addresses[idx]].append(
+                                                int(datastring_dict[beetle_addresses[idx]]))
+                                            datastring_dict[beetle_addresses[idx]] = ""
+                                        else:
+                                            datastring_dict[beetle_addresses[idx]] += char
+                            else:
+                                pass
                     else:
                         if '>' in data.decode('ISO-8859-1'):
                             buffer_dict[beetle_addresses[idx]
@@ -78,6 +80,7 @@ class Delegate(btle.DefaultDelegate):
                         else:
                             buffer_dict[beetle_addresses[idx]
                                         ] += data.decode('ISO-8859-1')
+                        """
                         # send data to dashboard once every 10 datasets
                         if packet_count_dict[beetle_addresses[idx]] % 10 == 0 and '>' in data.decode('ISO-8859-1'):
                             print("sending data to dashboard")
@@ -87,6 +90,7 @@ class Delegate(btle.DefaultDelegate):
 
                             board_client.send_data_to_DB(
                                 beetle_addresses[idx], final_arr)
+                        """
 
 
 def initHandshake(beetle):
@@ -123,21 +127,19 @@ def initHandshake(beetle):
                     else:
                         print(
                             "Failed to receive timestamp, sending 'Z', 'T', 'H', and 'R' packet to %s" % (beetle.addr))
-                        for characteristic in beetle.getCharacteristics():
-                            if characteristic.uuid == UUIDS.SERIAL_COMMS:
-                                characteristic.write(
-                                    bytes('R', 'UTF-8'), withResponse=False)
-                                characteristic.write(
-                                    bytes('T', 'UTF-8'), withResponse=False)
-                                characteristic.write(
-                                    bytes('H', 'UTF-8'), withResponse=False)
-                                characteristic.write(
-                                    bytes('Z', 'UTF-8'), withResponse=False)
-                                break
+                        characteristic.write(
+                            bytes('R', 'UTF-8'), withResponse=False)
+                        characteristic.write(
+                            bytes('T', 'UTF-8'), withResponse=False)
+                        characteristic.write(
+                            bytes('H', 'UTF-8'), withResponse=False)
+                        characteristic.write(
+                            bytes('Z', 'UTF-8'), withResponse=False)
                 except Exception as e:
                     reestablish_connection(beetle)
                     # if timestamp data already received from beetle
                     if clock_offset_dict[beetle.addr]:
+                        clocksync_flag_dict[beetle.addr] = False
                         incoming_data_flag[beetle.addr] = False
                         return
 
@@ -148,24 +150,21 @@ def establish_connection(address):
             for idx in range(len(beetle_addresses)):
                 # for initial connections or when any beetle is disconnected
                 if beetle_addresses[idx] == address:
-                    print("connecting with %s" % (address))
-                    beetle = btle.Peripheral(address)
-                    global_beetle[idx] = beetle
-                    beetle_delegate = Delegate(address)
-                    global_delegate_obj[idx] = beetle_delegate
-                    beetle.withDelegate(beetle_delegate)
-                    initHandshake(beetle)
-                    print("Connected to %s" % (address))
-                    return
-        except Exception as e:
-            print(e)
-            time.sleep(1)
-            for idx in range(len(beetle_addresses)):
-                if beetle_addresses[idx] == address:
                     if global_beetle[idx] != 0:  # do not reconnect if already connected
                         return
                     else:
-                        continue
+                        print("connecting with %s" % (address))
+                        beetle = btle.Peripheral(address)
+                        global_beetle[idx] = beetle
+                        beetle_delegate = Delegate(address)
+                        global_delegate_obj[idx] = beetle_delegate
+                        beetle.withDelegate(beetle_delegate)
+                        initHandshake(beetle)
+                        print("Connected to %s" % (address))
+                        return
+        except Exception as e:
+            print(e)
+            time.sleep(1)
 
 
 def reestablish_connection(beetle):
@@ -183,170 +182,109 @@ def reestablish_connection(beetle):
 
 def getPositionData(beetle):
     retries = 0
-    response_dict[beetle.addr] = ""
+    timeout_count = 0
     incoming_data_flag[beetle.addr] = True
-    if relative_position_flag[beetle.addr] is True:
-        for characteristic in beetle.getCharacteristics():
-            if characteristic.uuid == UUIDS.SERIAL_COMMS:
-                while True:
-                    if retries >= 5:
-                        break
-                    print("sending 'A' to beetle %s to collect relative position movement data" % (
-                        beetle.addr))
-                    characteristic.write(
-                        bytes('A', 'UTF-8'), withResponse=False)
-                    retries += 1
-                    time.sleep(0.5)
-                break
-        while True:
-            try:
-                if beetle.waitForNotifications(3):
-                    print("getting relative position data...")
-                    print(packet_count_dict[beetle.addr])
-                    if packet_count_dict[beetle.addr] >= 59:
-                        relative_position_flag[beetle.addr] = False
-                        incoming_data_flag[beetle.addr] = False
-                        packet_count_dict[beetle.addr] = 0
-                        return
-                    continue
-                elif beetle.addr == "78:DB:2F:BF:3B:54":  # may not receive data from hand beetle if moving positions
-                    # hand beetle already got data
-                    if packet_count_dict["50:F1:4A:CB:FE:EE"] >= (num_datasets / 2):
-                        print("sufficient datasets received from %s. Processing data now" % (
-                            beetle.addr))
-                        # reset for next dance move
-                        packet_count_dict[beetle.addr] = 0
-                        incoming_data_flag[beetle.addr] = False
-                        relative_position_flag[beetle.addr] = False
-                        return
-                    else:
-                        # reset for next dance move
-                        packet_count_dict[beetle.addr] = 0
-                        incoming_data_flag[beetle.addr] = False
-                        relative_position_flag[beetle.addr] = False
-                        return
-                elif packet_count_dict[beetle.addr] >= 30:
+    for characteristic in beetle.getCharacteristics():
+        if characteristic.uuid == UUIDS.SERIAL_COMMS:
+            while True:
+                if retries >= 12:
+                    break
+                print("sending 'A' to beetle %s to collect relative position movement data" % (
+                    beetle.addr))
+                characteristic.write(
+                    bytes('A', 'UTF-8'), withResponse=False)
+                retries += 1
+                time.sleep(0.25)
+            break
+    while True:
+        try:
+            if beetle.waitForNotifications(2):
+                print("getting relative position data...")
+                print(packet_count_dict[beetle.addr])
+                if packet_count_dict[beetle.addr] >= num_positions:
                     relative_position_flag[beetle.addr] = False
                     incoming_data_flag[beetle.addr] = False
                     packet_count_dict[beetle.addr] = 0
                     return
-                else:
-                    for characteristic in beetle.getCharacteristics():
-                        if characteristic.uuid == UUIDS.SERIAL_COMMS:
-                            print(
-                                "Failed to receive position data, sending 'A' and 'R' packet to %s" % (beetle.addr))
-                            characteristic.write(
-                                bytes('A', 'UTF-8'), withResponse=False)
-                            characteristic.write(
-                                bytes('R', 'UTF-8'), withResponse=False)
-                            response_dict[beetle.addr] = ""
-                            break
-                    if beetle.waitForNotifications(10):
-                        print("getting relative position data...")
-                        print(packet_count_dict[beetle.addr])
-                        if packet_count_dict[beetle.addr] >= 59:
-                            relative_position_flag[beetle.addr] = False
-                            incoming_data_flag[beetle.addr] = False
-                            packet_count_dict[beetle.addr] = 0
-                            return
-                    elif packet_count_dict[beetle.addr] >= 30:
-                        relative_position_flag[beetle.addr] = False
-                        incoming_data_flag[beetle.addr] = False
-                        packet_count_dict[beetle.addr] = 0
-                        return
-            except Exception as e:
-                reestablish_connection(beetle)
-    else:
-        return
+                continue
+            elif packet_count_dict[beetle.addr] >= num_positions / 2:
+                relative_position_flag[beetle.addr] = False
+                incoming_data_flag[beetle.addr] = False
+                packet_count_dict[beetle.addr] = 0
+                return
+            elif timeout_count >= 1:
+                relative_position_flag[beetle.addr] = False
+                incoming_data_flag[beetle.addr] = False
+                packet_count_dict[beetle.addr] = 0
+                timeout_count = 0
+                return
+            else:
+                timeout_count += 1
+        except Exception as e:
+            reestablish_connection(beetle)
 
 
 def getDanceData(beetle):
     retries = 0
-    response_dict[beetle.addr] = ""
     incoming_data_flag[beetle.addr] = True
     for characteristic in beetle.getCharacteristics():
         if characteristic.uuid == UUIDS.SERIAL_COMMS:
             while True:
                 if retries >= 5:
+                    retries = 0
                     break
                 print(
-                    "sending 'A', 'B' and 'P' to beetle %s to kickstart beetle sensor collection", (beetle.addr))
-                characteristic.write(
-                    bytes('A', 'UTF-8'), withResponse=False)
+                    "sending 'P' to beetle %s to kickstart beetle sensor collection", (beetle.addr))
                 characteristic.write(
                     bytes('P', 'UTF-8'), withResponse=False)
-                characteristic.write(
-                    bytes('B', 'UTF-8'), withResponse=False)
                 retries += 1
                 time.sleep(0.1)
-            break
-    while True:
-        try:
-            if beetle.waitForNotifications(3):
-                print("getting data...")
-                print(packet_count_dict[beetle.addr])
-                # if number of datasets received from all beetles exceed expectation
-                if packet_count_dict[beetle.addr] >= num_datasets:
-                    print("sufficient datasets received from %s. Processing data now" % (
-                        beetle.addr))
-                    # reset for next dance move
-                    packet_count_dict[beetle.addr] = 0
-                    incoming_data_flag[beetle.addr] = False
-                    relative_position_flag[beetle.addr] = True
-                    return
-                continue
-            elif beetle.addr == "50:F1:4A:CB:FE:EE":  # may not receive data from leg beetle if only hand dances
-                # hand beetle already got data
-                if packet_count_dict["78:DB:2F:BF:3B:54"] >= (num_datasets / 2):
-                    print("sufficient datasets received from %s. Processing data now" % (
-                        beetle.addr))
-                    # reset for next dance move
-                    packet_count_dict[beetle.addr] = 0
-                    incoming_data_flag[beetle.addr] = False
-                    relative_position_flag[beetle.addr] = True
-                    return
-                else:
-                    packet_count_dict[beetle.addr] = 0
-                    incoming_data_flag[beetle.addr] = False
-                    relative_position_flag[beetle.addr] = True
-                    return
-            # beetle finish transmitting, but got packet losses
-            elif packet_count_dict[beetle.addr] >= (num_datasets / 2):
-                print("sufficient datasets received from %s with packet losses. Processing data now" % (
-                    beetle.addr))
-                # reset for next dance move
-                packet_count_dict[beetle.addr] = 0
-                incoming_data_flag[beetle.addr] = False
-                relative_position_flag[beetle.addr] = True
-                return
-            else:  # beetle did not start transmitting despite ultra96 sending 'A' previously, or still stuck at relative position
-                print(
-                    "Failed to receive data, resending 'A', 'B' and 'P' packet to %s" % (beetle.addr))
-                for characteristic in beetle.getCharacteristics():
-                    if characteristic.uuid == UUIDS.SERIAL_COMMS:
-                        characteristic.write(
-                            bytes('A', 'UTF-8'), withResponse=False)
-                        characteristic.write(
-                            bytes('B', 'UTF-8'), withResponse=False)
-                        characteristic.write(
-                            bytes('P', 'UTF-8'), withResponse=False)
-                        response_dict[beetle.addr] = ""
-                        break
-                if beetle.waitForNotifications(10):
-                    print("getting data...")
-                    print(packet_count_dict[beetle.addr])
-                    if packet_count_dict[beetle.addr] >= num_datasets:
+            while True:
+                try:
+                    if beetle.waitForNotifications(6):
+                        print("getting data...")
+                        print(packet_count_dict[beetle.addr])
+                        # if number of datasets received from all beetles exceed expectation
+                        if packet_count_dict[beetle.addr] >= num_datasets:
+                            print("sufficient datasets received from %s. Processing data now" % (
+                                beetle.addr))
+                            # reset for next dance move
+                            packet_count_dict[beetle.addr] = 0
+                            incoming_data_flag[beetle.addr] = False
+                            relative_position_flag[beetle.addr] = True
+                            while True:
+                                if retries >= 8:
+                                    break
+                                characteristic.write(
+                                    bytes('Z', 'UTF-8'), withResponse=False)
+                                retries += 1
+                                time.sleep(0.25)
+                            return
+                        continue
+                    # beetle finish transmitting, but got packet losses
+                    elif packet_count_dict[beetle.addr] >= num_datasets / 2:
+                        print("sufficient datasets received from %s with packet losses. Processing data now" % (
+                            beetle.addr))
+                        # reset for next dance move
                         packet_count_dict[beetle.addr] = 0
                         incoming_data_flag[beetle.addr] = False
                         relative_position_flag[beetle.addr] = True
+                        while True:
+                            if retries >= 8:
+                                break
+                            characteristic.write(
+                                bytes('Z', 'UTF-8'), withResponse=False)
+                            retries += 1
+                            time.sleep(0.25)
                         return
-                elif packet_count_dict[beetle.addr] >= (num_datasets / 2):
-                    packet_count_dict[beetle.addr] = 0
-                    incoming_data_flag[beetle.addr] = False
-                    relative_position_flag[beetle.addr] = True
-                    return
-        except Exception as e:
-            reestablish_connection(beetle)
+                    else:  # beetle did not start transmitting despite ultra96 sending 'A' previously, or still stuck at relative position
+                        packet_count_dict[beetle.addr] = 0
+                        print(
+                            "Failed to receive data, resending 'P' packet to %s" % (beetle.addr))
+                        characteristic.write(
+                            bytes('P', 'UTF-8'), withResponse=False)
+                except Exception as e:
+                    reestablish_connection(beetle)
 
 
 def processData(address):
@@ -465,12 +403,11 @@ def processData(address):
         except Exception as e:
             print(e)
             print("error in processData in line 478")
-    if first_dance is False:
-        for character in "\r\n":
-            position_buffer[address] = position_buffer[address].replace(
-                character, "")
-        deserialize(position_buffer, position_dict, address)
-        dataset_count_dict[address] = 0
+    for character in "\r\n":
+        position_buffer[address] = position_buffer[address].replace(
+            character, "")
+    deserialize(position_buffer, position_dict, address)
+    dataset_count_dict[address] = 0
     for character in "\r\n":
         buffer_dict[address] = buffer_dict[address].replace(character, "")
     deserialize(buffer_dict, data_dict, address)
@@ -484,9 +421,9 @@ def parse_hand_data(dic_data):
     # collect hand data
     data = []
 
-    for k, v in dic_data[hand].items():  # k = data point no, v = data collected
-        ypr = []  # yaw, pitch, roll
-        for i in range(1, 4):
+    for v in dic_data[hand].values():  # k = data point no, v = data collected
+        ypr = []  # yaw, pitch, roll, accx, y, z
+        for i in range(1, 7):
             ypr.append(v[i])
         data.append(ypr)
 
@@ -494,18 +431,13 @@ def parse_hand_data(dic_data):
 
 
 def get_prediction(dic_data):
-    print(dic_data)
     ypr_data = parse_hand_data(dic_data)
-    with open("knn_dance.pkl", 'rb') as file:
-        knn = pickle.load(file)
-    # knn = load('knn_dance.pkl')
-    y_pred = knn.predict(ypr_data)
+    mlp = load('mlp_dance.joblib')
+    y_pred = mlp.predict(ypr_data)
     unique, counts = numpy.unique(y_pred, return_counts=True)
     y_pred_count = dict(zip(unique, counts))
     prediction = max(y_pred_count.items(), key=operator.itemgetter(1))[0]
     return prediction
-
-# add dummy datasets to data dict if less than num_datasets, delete otherwise
 
 
 def clean_up_dict(data_dict, address):
@@ -521,53 +453,56 @@ def clean_up_dict(data_dict, address):
 
 if __name__ == '__main__':
     # global variables
-    first_dance = True
     beetle_addresses = ["78:DB:2F:BF:3F:63",
-                        "78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
-    # change this depending on number of decimal places needed; get original float from beetle sensors
+                        "78:DB:2F:BF:3B:54", "1C:BA:8C:1D:30:22"]
     divide_get_float = 100.0
-    #beetle_addresses = ["78:DB:2F:BF:3B:54", "78:DB:2F:BF:2C:E2"]
     global_delegate_obj = []
     global_beetle = []
     handshake_flag_dict = {"78:DB:2F:BF:3F:63": True,
-                           "78:DB:2F:BF:3B:54": True, "78:DB:2F:BF:2C:E2": True}
+                           "78:DB:2F:BF:3B:54": True, "1C:BA:8C:1D:30:22": True}
     buffer_dict = {"78:DB:2F:BF:3F:63": "",
-                   "78:DB:2F:BF:3B:54": "", "78:DB:2F:BF:2C:E2": ""}
+                   "78:DB:2F:BF:3B:54": "", "1C:BA:8C:1D:30:22": ""}
     position_buffer = {"78:DB:2F:BF:3F:63": "",
-                       "78:DB:2F:BF:3B:54": "", "78:DB:2F:BF:2C:E2": ""}
+                       "78:DB:2F:BF:3B:54": "", "1C:BA:8C:1D:30:22": ""}
     incoming_data_flag = {"78:DB:2F:BF:3F:63": False,
-                          "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
+                          "78:DB:2F:BF:3B:54": False, "1C:BA:8C:1D:30:22": False}
+    relative_position_flag = {"78:DB:2F:BF:3F:63": True,
+                              "78:DB:2F:BF:3B:54": True, "1C:BA:8C:1D:30:22": True}
     # data global variables
-    num_datasets = 128
+    num_positions = 60
+    num_datasets = 30
+    beetle1_position_dict = {"78:DB:2F:BF:3F:63": {}}
+    beetle2_position_dict = {"78:DB:2F:BF:3B:54": {}}
+    beetle3_position_dict = {"1C:BA:8C:1D:30:22": {}}
     beetle1_data_dict = {"78:DB:2F:BF:3F:63": {}}
     beetle2_data_dict = {"78:DB:2F:BF:3B:54": {}}
-    beetle3_data_dict = {"78:DB:2F:BF:2C:E2": {}}
+    beetle3_data_dict = {"1C:BA:8C:1D:30:22": {}}
     datastring_dict = {"78:DB:2F:BF:3F:63": "",
-                       "78:DB:2F:BF:3B:54": "", "78:DB:2F:BF:2C:E2": ""}
+                       "78:DB:2F:BF:3B:54": "", "1C:BA:8C:1D:30:22": ""}
     packet_count_dict = {"78:DB:2F:BF:3F:63": 0,
-                         "78:DB:2F:BF:3B:54": 0, "78:DB:2F:BF:2C:E2": 0}
+                         "78:DB:2F:BF:3B:54": 0, "1C:BA:8C:1D:30:22": 0}
     dataset_count_dict = {"78:DB:2F:BF:3F:63": 0,
-                          "78:DB:2F:BF:3B:54": 0, "78:DB:2F:BF:2C:E2": 0}
+                          "78:DB:2F:BF:3B:54": 0, "1C:BA:8C:1D:30:22": 0}
     float_flag_dict = {"78:DB:2F:BF:3F:63": False,
-                       "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
+                       "78:DB:2F:BF:3B:54": False, "1C:BA:8C:1D:30:22": False}
     timestamp_flag_dict = {"78:DB:2F:BF:3F:63": False,
-                           "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
+                           "78:DB:2F:BF:3B:54": False, "1C:BA:8C:1D:30:22": False}
     comma_count_dict = {"78:DB:2F:BF:3F:63": 0,
-                        "78:DB:2F:BF:3B:54": 0, "78:DB:2F:BF:2C:E2": 0}
+                        "78:DB:2F:BF:3B:54": 0, "1C:BA:8C:1D:30:22": 0}
     checksum_dict = {"78:DB:2F:BF:3F:63": 0,
-                     "78:DB:2F:BF:3B:54": 0, "78:DB:2F:BF:2C:E2": 0}
+                     "78:DB:2F:BF:3B:54": 0, "1C:BA:8C:1D:30:22": 0}
     start_flag = {"78:DB:2F:BF:3F:63": False,
-                  "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
+                  "78:DB:2F:BF:3B:54": False, "1C:BA:8C:1D:30:22": False}
     end_flag = {"78:DB:2F:BF:3F:63": False,
-                "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
+                "78:DB:2F:BF:3B:54": False, "1C:BA:8C:1D:30:22": False}
     # clock synchronization global variables
     dance_count = 0
     clocksync_flag_dict = {"78:DB:2F:BF:3F:63": False,
-                           "78:DB:2F:BF:3B:54": False, "78:DB:2F:BF:2C:E2": False}
+                           "78:DB:2F:BF:3B:54": False, "1C:BA:8C:1D:30:22": False}
     timestamp_dict = {"78:DB:2F:BF:3F:63": [],
-                      "78:DB:2F:BF:3B:54": [], "78:DB:2F:BF:2C:E2": []}
+                      "78:DB:2F:BF:3B:54": [], "1C:BA:8C:1D:30:22": []}
     clock_offset_dict = {"78:DB:2F:BF:3F:63": [],
-                         "78:DB:2F:BF:3B:54": [], "78:DB:2F:BF:2C:E2": []}
+                         "78:DB:2F:BF:3B:54": [], "1C:BA:8C:1D:30:22": []}
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle.append(0) for idx in range(len(beetle_addresses))]
@@ -575,12 +510,13 @@ if __name__ == '__main__':
     establish_connection("78:DB:2F:BF:3F:63")
     time.sleep(1)
 
-    establish_connection("78:DB:2F:BF:3B:54",)
+    establish_connection("78:DB:2F:BF:3B:54")
     time.sleep(1)
 
-    establish_connection("78:DB:2F:BF:2C:E2")
+    establish_connection("1C:BA:8C:1D:30:22")
     time.sleep(1)
 
+    """
     try:
         eval_client = eval_client.Client(
             "137.132.92.80", 4000, 6, "cg40024002group6")
@@ -592,11 +528,8 @@ if __name__ == '__main__':
             "192.168.43.248", 8080, 6, "cg40024002group6")
     except Exception as e:
         print(e)
-
-    print("connected to both servers")
-
+    """
     while True:
-        """
         # do calibration once every 2 moves; change 2 to other values according to time calibration needs
         if dance_count == 2:
             print("Proceed to do time calibration...")
@@ -608,13 +541,13 @@ if __name__ == '__main__':
         if dance_count == 2:
             dance_count = 0
         dance_count += 1
-        """
-        """
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
             receive_data_futures = {data_executor.submit(
                 getPositionData, beetle): beetle for beetle in global_beetle}
             data_executor.shutdown(wait=True)
-        """
+        for i in range(5, 0, -1):
+            time.sleep(1)
+            print(i)
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
             receive_data_futures = {data_executor.submit(
                 getDanceData, beetle): beetle for beetle in global_beetle}
@@ -623,23 +556,19 @@ if __name__ == '__main__':
         workers = [pool.apply_async(processData, args=(address, ))
                    for address in beetle_addresses]
         result = [worker.get() for worker in workers]
-        """
-        if first_dance is False:
-            for idx in range(0, len(result)):
-                for address in result[idx][0].keys():
-                    elif address == "78:DB:2F:BF:3F:63":
-                        beetle3_position_dict[address] = result[idx][0][address]
-                        #clean_up_dict(beetle3_position_dict, address)
-                    elif address == "78:DB:2F:BF:3F:23":
-                        beetle4_position_dict[address] = result[idx][0][address]
-                        #clean_up_dict(beetle4_position_dict, address)
-                    elif address == "78:DB:2F:BF:3B:54":
-                        beetle5_position_dict[address] = result[idx][0][address]
-                        #clean_up_dict(beetle5_position_dict, address)
-                    elif address == "78:DB:2F:BF:2C:E2":
-                        beetle6_position_dict[address] = result[idx][0][address]
-                        #clean_up_dict(beetle6_position_dict, address)
-        """
+
+        for idx in range(0, len(result)):
+            for address in result[idx][0].keys():
+                if address == "78:DB:2F:BF:3F:63":
+                    beetle1_position_dict[address] = result[idx][0][address]
+                    #clean_up_dict(beetle3_position_dict, address)
+                elif address == "78:DB:2F:BF:3B:54":
+                    beetle2_position_dict[address] = result[idx][0][address]
+                    #clean_up_dict(beetle5_position_dict, address)
+                elif address == "1C:BA:8C:1D:30:22":
+                    beetle3_position_dict[address] = result[idx][0][address]
+                    #clean_up_dict(beetle6_position_dict, address)
+
         for idx in range(0, len(result)):
             for address in result[idx][1].keys():
                 if address == "78:DB:2F:BF:3F:63":
@@ -648,25 +577,24 @@ if __name__ == '__main__':
                 elif address == "78:DB:2F:BF:3B:54":
                     beetle2_data_dict[address] = result[idx][1][address]
                     clean_up_dict(beetle2_data_dict, address)
-                elif address == "78:DB:2F:BF:2C:E2":
+                elif address == "1C:BA:8C:1D:30:22":
                     beetle3_data_dict[address] = result[idx][1][address]
                     clean_up_dict(beetle3_data_dict, address)
         # clear buffer for next move
-        """
         for address in position_buffer.keys():
             position_buffer[address] = ""
         print(beetle1_position_dict)
-        print(beetle2_position_dict)
-        print(beetle3_position_dict)
-        """
+        # print(beetle2_position_dict)
+        # print(beetle3_position_dict)
+
         for address in buffer_dict.keys():
             buffer_dict[address] = ""
         print(beetle1_data_dict)
-        print(beetle2_data_dict)
-        print(beetle3_data_dict)
+        # print(beetle2_data_dict)
+        # print(beetle3_data_dict)
 
         # synchronization delay
-        
+        """
         beetle1_time_ultra96 = calculate_ultra96_time(
             beetle1_data_dict, clock_offset_dict["78:DB:2F:BF:3F:63"][0])
         
@@ -676,12 +604,12 @@ if __name__ == '__main__':
 
         
         beetle3_time_ultra96 = calculate_ultra96_time(
-            beetle3_data_dict, clock_offset_dict["78:DB:2F:BF:2C:E2"][0])
+            beetle3_data_dict, clock_offset_dict["1C:BA:8C:1D:30:22"][0])
         
         
         sync_delay = max(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96) - \
             min(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96)
-        
+        """
         # print("Beetle 1 ultra 96 time: ", beetle1_time_ultra96)
         # print("Beetle 2 ultra 96 time: ", beetle2_time_ultra96)
         # print("Beetle 3 ultra 96 time: ", beetle3_time_ultra96)
@@ -691,33 +619,15 @@ if __name__ == '__main__':
         #print("Synchronization delay is: ", sync_delay)
 
         # machine learning
-        
-        ml_result = get_prediction(beetle1_data_dict)
 
-        workers = pool.apply_async(predict_dance.get_prediction, args=(beetle1_data_dict))
-        ml_result = workers.get()
-        
+        #ml_result = get_prediction(beetle1_data_dict)
+        #workers = pool.apply_async(get_prediction, args=(beetle1_data_dict))
+        #ml_result = workers.get()
 
         #ml_result = "dumbbelldumbbell"
         # send data to eval server
         # send data to dashboard server
-        
-        eval_client.send_data("1 2 3", ml_result, str(sync_delay))
-        
-        
-        board_client.send_data_to_DB("ML1Dancer1234567", ml_result)
-        
 
-        # clear the data dictionaries for next dance move
-        """
-        beetle1_position_dict = {"1C:BA:8C:1D:30:22": {}}
-        beetle2_position_dict = {"50:F1:4A:CB:FE:EE": {}}
-        beetle3_position_dict = {"78:DB:2F:BF:3F:63": {}}
-        beetle4_position_dict = {"78:DB:2F:BF:3F:23": {}}
-        beetle5_position_dict = {"78:DB:2F:BF:3B:54": {}}
-        beetle6_position_dict = {"78:DB:2F:BF:2C:E2": {}}
-        """
-        beetle1_data_dict = {"78:D8:2F:BF:3F:63": {}}
-        beetle2_data_dict = {"78:DB:2F:BF:3B:54": {}}
-        beetle3_data_dict = {"78:DB:2F:BF:2C:E2": {}}
-        first_dance = False
+        #eval_client.send_data("1 2 3", ml_result, str(sync_delay))
+        #board_client.send_data_to_DB("ML1Dancer1234567", ml_result)
+        time.sleep(1)
