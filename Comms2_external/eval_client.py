@@ -27,7 +27,7 @@ class Client():
     def add_padding(self, plain_text):
         pad = lambda s: s + (BLOCK_SIZE - (len(s) % BLOCK_SIZE)) * PADDING
         padded_plain_text = pad(plain_text)
-        print("[Evaluation Client] padded_plain_text length: ", len(padded_plain_text))
+        # print("[Evaluation Client] padded_plain_text length: ", len(padded_plain_text))
         return padded_plain_text
 
     def encrypt_message(self, position, action, syncdelay):
@@ -45,8 +45,13 @@ class Client():
         encrypted_text = self.encrypt_message(position, action, syncdelay)
         print("[Evaluation Client] encrypted_text: ", encrypted_text)
         sent_message = encrypted_text
-        print("[Evaluation Client] sent_message length: ", len(sent_message))
+        # print("[Evaluation Client] sent_message length: ", len(sent_message))
         self.socket.sendall(sent_message)
+
+    def receive_dancer_position(self):
+        dancer_position = self.socket.recv(1024)
+        msg = dancer_position.decode("utf8")
+        return msg
 
     def stop(self):
         self.connection.close()
@@ -68,11 +73,13 @@ def main():
     my_client = Client(ip_addr, port_num, group_id, secret_key)
     action = ""
     # test client on laptop
-    time.sleep(10)
+    time.sleep(60)
 
     count = 0
     while action != "logout":
         my_client.send_data("1 2 3", "muscle", "1.00")
+        dancer_position = my_client.receive_dancer_position()
+        print("[Evaluation Client] Received dancer position: ", dancer_position)
         time.sleep(2)
         count += 1
         if(count == 50) :
