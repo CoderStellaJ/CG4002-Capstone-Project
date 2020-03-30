@@ -1,4 +1,7 @@
 #Dashboard server that interacts with client server of ATMEGA96
+#cd Desktop/Github/CG4002-Capstone-Project/Sw2_dashboard
+#python dashboardServer.py 192.168.43.248
+
 import os
 import sys
 import random
@@ -73,22 +76,39 @@ class Server(threading.Thread):
                         print(splitStr)
                         try:
                             table = ''
+                            #Position 1
+                            if(splitStr[0] == "78:DB:2F:BF:3F:63"):
+                                table = "Beetle1"
+                                dataPoint = eval(splitStr[1])
+                                addValue(table, dataPoint[1], dataPoint[2],dataPoint[3],dataPoint[4],dataPoint[5],dataPoint[6])
 
-                            if(splitStr[0] == "78:DB:2F:BF:3B:54"):
-                                table = "Dancer1"
+                            #Position 2
+                            elif(splitStr[0] == "1C:BA:8C:1D:30:22"):
                                 dataPoint = eval(splitStr[1])
-                                addValue(table, "test", dataPoint[1], dataPoint[2], dataPoint[3])
-                                
-                            elif(splitStr[0] == "50:F1:4A:CB:FE:EE"):
+                                table = "Beetle2"
+                                addValue(table, dataPoint[1], dataPoint[2],dataPoint[3],dataPoint[4],dataPoint[5],dataPoint[6])
+
+                            #Position 3
+                            elif(splitStr[0] == "78:DB:2F:BF:2C:E2"):
                                 dataPoint = eval(splitStr[1])
-                                table = "Dancer2"
-                                addValue(table, "test", dataPoint[1], dataPoint[2], dataPoint[3])
-                            #elif(splitStr[0] == "MLDancer1234567"):
-                                #addValue("MLDancer1", splitStr)
-                        except:
-                            print(splitStr)
-                except:
-                    print("Data failure")
+                                table = "Beetle3"
+                                addValue(table, dataPoint[1], dataPoint[2],dataPoint[3],dataPoint[4],dataPoint[5],dataPoint[6])
+
+                            #Emg Data
+                            elif(splitStr[0] == "EMG"):
+                                dataPoint = eval(splitStr[1])
+                                table = "EMG"
+                                addValue(table,dataPoint[1], dataPoint[2],dataPoint[3],dataPoint[4])
+                            
+                            #Machine Learning Output
+                            elif(splitStr[0] == "MLDancer1"):
+                                print(splitStr)
+                                addValue("MLDancer1", splitStr[1])
+                                print("completes function")
+                        except Exception as e:
+                            print("Error:" + splitStr + "Error Message: " +  str(e))
+                except Exception as e:
+                    print("Data failure: " + str(e))
                         
 
                     
