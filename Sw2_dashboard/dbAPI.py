@@ -104,17 +104,43 @@ def fakeData(Dancer):
     elif (arr[i] == "transition"):
         addValue(Dancer, "transition", 0, 0, 0)
     #print(showTable("Dancer1"))
-    
 
+def processDatabase():
+    #Create a beetle
+    #createTable("Beetle1", "Yaw", "Pitch", "Row", "Xaxis", "Yaxis", "Zaxis")
+    #createTable("EMG", "MaxAmplitude", "MeanAmplitude", "RMSAmplitude", "MeanFrequency")
+    #addValue("EMG", "100.0","-100.0", "100.0", "-100.0" )
+    print("Data processed")
+    
+import numpy as np
+from collections import deque
 #testing
 if __name__ == '__main__':
     #createTable("MLDancer1", "Dancer1")
     ##6 Beetles---------> Yaw,pitch,roll,X-Axis,Y-Axis,Z-Axis
     ##EMG ------------> mean amplitude(MeanAmp),root mean square amplitude(RMSAmp) mean frequency(MeanFreq)
 ##    createTable("Beetle3", "Yaw", "Pitch", "Row", "Xaxis", "Yaxis", "Zaxis")
-    addValue("Beetle6", "-20.00", "-40.00", "-60.00", "-100.00", "-120.00", "-180.00")
+    #addValue("Beetle6", "-20.00", "-40.00", "-60.00", "-100.00", "-120.00", "-180.00")
 ##    for no in range(1,7):
 ##        showTable("Beetle" + str(no))
+
+    ##EMG
+    #processDatabase()
+    #https://neutrium.net/mathematics/least-squares-fitting-of-a-polynomial/
+    index = [1,2,3,4,5]
+    data = [1,2,3,4,5]
+    coeffs = np.polyfit(index,list(data), 1)
+    slope = coeffs[-2]
+    print(float(slope))
+    
+
+    deq = deque(maxlen =5)
+    for i in data:
+        deq.append(i)
+    print (deq)
+    print(list(deq))
+    x = list(deq)
+    print(x[-2:])
     
     #change()
     #fakeData("Dancer1")

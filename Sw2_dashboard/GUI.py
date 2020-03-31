@@ -9,6 +9,7 @@ import plotly
 import random
 import plotly.graph_objs as go
 from collections import deque
+import numpy as np
 
 #get last row of data using the function of dbAPI.py
 from dbAPI import getLastRow
@@ -69,47 +70,14 @@ Y3.append(1)
 Z3 = deque(maxlen=10)
 Z3.append(1)
 
-Yaw4 = deque(maxlen=10)
-Yaw4.append(1)
-Pitch4 = deque(maxlen=10)
-Pitch4.append(1)
-Roll4 = deque(maxlen=10)
-Roll4.append(1)
-X4 = deque(maxlen=10)
-X4.append(1)
-Y4 = deque(maxlen=10)
-Y4.append(1)
-Z4 = deque(maxlen=10)
-Z4.append(1)
-
-Yaw5 = deque(maxlen=10)
-Yaw5.append(1)
-Pitch5 = deque(maxlen=10)
-Pitch5.append(1)
-Roll5 = deque(maxlen=10)
-Roll5.append(1)
-X5 = deque(maxlen=10)
-X5.append(1)
-Y5 = deque(maxlen=10)
-Y5.append(1)
-Z5 = deque(maxlen=10)
-Z5.append(1)
-
-Yaw6 = deque(maxlen=10)
-Yaw6.append(1)
-Pitch6 = deque(maxlen=10)
-Pitch6.append(1)
-Roll6 = deque(maxlen=10)
-Roll6.append(1)
-X6 = deque(maxlen=10)
-X6.append(1)
-Y6 = deque(maxlen=10)
-Y6.append(1)
-Z6 = deque(maxlen=10)
-Z6.append(1)
-
-##Add emg information here as well
-
+MaxAmp = deque(maxlen=10)
+MaxAmp.append(1)
+MeanAmp = deque(maxlen=10)
+MeanAmp.append(1)
+RMSAmp = deque(maxlen=10)
+RMSAmp.append(1)
+MeanFreq = deque(maxlen =10)
+MeanFreq.append(1)
 #==============================
 
 external_stylesheets = [dbc.themes.BOOTSTRAP]
@@ -133,7 +101,7 @@ def init_layout(refresh_interval):
             html.Div(style ={'text-align':'center','border': '2px solid black','border-radius':'5px'}, children = html.H5('Dancer 1')),
             html.Div(style={'font-size':'80%'},id='Dancer1Output'),
             dbc.Row([
-                dbc.Col([html.H6('Beetle 1'),
+                dbc.Col([html.H6('IMU'),
                          
                          html.Div(children=html.Div(id='graphsD1', className = "row")),
                     dcc.Interval(
@@ -142,7 +110,7 @@ def init_layout(refresh_interval):
                         n_intervals=0
                         )
                         ]),
-                dbc.Col([html.H6('Beetle 2'),
+                dbc.Col([html.H6('Accelerometer'),
                          html.Div(children=html.Div(id='graphsD2', className = "row"))
                  ])
         ]),
@@ -153,10 +121,10 @@ def init_layout(refresh_interval):
             html.Div(style ={'text-align':'center','border': '2px solid black','border-radius':'5px'}, children = html.H5('Dancer 2')),
             html.Div(style={'font-size':'80%'},id='Dancer2Output'),
             dbc.Row([
-                dbc.Col([html.H6('Beetle 3'),
+                dbc.Col([html.H6('IMU'),
                          html.Div(children=html.Div(id='graphsD3', className = "row")),
                          ]),
-                dbc.Col([html.H6('Beetle 4'),
+                dbc.Col([html.H6('Accelerometer'),
                          html.Div(children=html.Div(id='graphsD4', className = "row")),
                          ])
                     ]),
@@ -165,21 +133,31 @@ def init_layout(refresh_interval):
 
     ##add the EMG to a new row and colum grid with dancer 3
     dbc.Row([
+            
             dbc.Col([
                     html.Div(style ={'text-align':'center','border': '2px solid black','border-radius':'5px'}, children = html.H5('Dancer 3')),
                     html.Div(style={'font-size':'80%'},id='Dancer3Output'),    
                     dbc.Row([
-                        dbc.Col([html.H6('Beetle 5'),
+                        dbc.Col([html.H6('IMU'),
                                  html.Div(children=html.Div(id='graphsD5', className = "row")),
                                  ]),
-                        dbc.Col([html.H6('Beetle 6'),
+                        dbc.Col([html.H6('Accelerometer'),
                                  html.Div(children=html.Div(id='graphsD6', className = "row")),
                                  ]),
                         ]),
                 ]),
+            ##insert EMG here
             dbc.Col([
                 html.Div(style ={'text-align':'center','border': '2px solid black','border-radius':'5px'}, children = html.H5('EMG')),
-
+                html.Div(style={'font-size':'80%'},id='EMGOutput'),    
+                dbc.Row([
+                    dbc.Col([html.H6('Time'),
+                             html.Div(children=html.Div(id='graphsD7', className = "row")),
+                             ]),
+                    dbc.Col([html.H6('Frequency'),
+                             html.Div(children=html.Div(id='graphsD8', className = "row")),
+                             ]),
+                    ]),
                 ]),
         ]),
     
@@ -209,39 +187,51 @@ data_dict = {
 "X3":X3,
 "Y3": Y3,
 "Z3": Z3,
-"Yaw4":Yaw4,
-"Pitch4": Pitch4,
-"Roll4": Roll4,
-"X4":X4,
-"Y4": Y4,
-"Z4": Z4,
-"Yaw5": Yaw5,
-"Pitch5": Pitch5,
-"Roll5": Roll5,
-"X5":X5,
-"Y5": Y5,
-"Z5": Z5,
-"Yaw6":Yaw5,
-"Pitch6": Pitch6,
-"Roll6": Roll6,
-"X6":X6,
-"Y6": Y6,
-"Z6": Z6,
+"MaxAmp": MaxAmp,
+"MeanAmp": MeanAmp,
+"RMSAmp": RMSAmp,
+"MeanFreq": MeanFreq
+##"Yaw4":Yaw4,
+##"Pitch4": Pitch4,
+##"Roll4": Roll4,
+##"X4":X4,
+##"Y4": Y4,
+##"Z4": Z4,
+##"Yaw5": Yaw5,
+##"Pitch5": Pitch5,
+##"Roll5": Roll5,
+##"X5":X5,
+##"Y5": Y5,
+##"Z5": Z5,
+##"Yaw6":Yaw5,
+##"Pitch6": Pitch6,
+##"Roll6": Roll6,
+##"X6":X6,
+##"Y6": Y6,
+##"Z6": Z6,
 }
 
-def ML(lastRow):
-    #Pseudo Machine Learning Algorithmn
-    if(lastRow[1] == 1.0 and lastRow[2] == 1.0 and lastRow[3] == 1.0):
-        returnStr = "shoutout - Position 1,2,3"
-    elif(lastRow[1] == 2.0 and lastRow[2] == 3.0 and lastRow[3] == 5.0):
-        returnStr = "weightlift - Position 2,3,1"
-    elif(lastRow[1] == 3.0 and lastRow[2] == 4.0 and lastRow[3] == 4.0):
-        returnStr = "muscle - Position 3,1,2"
-    elif(lastRow[1] == 0 and lastRow[2] == 0 and lastRow[3] == 0):
-        returnStr = "transition"
-    else:
-        returnStr = "test"
-    return returnStr
+global front
+front = 1
+global back
+back= 4
+global counter
+counter = 1
+
+#https://stackoverflow.com/questions/55649356/how-can-i-detect-if-trend-is-increasing-or-decreasing-in-time-series
+def determineTrend(data):
+    index = [1,2,3,4,5]
+    coeffs = np.polyfit(index,list(data), 1)
+    slope = coeffs[-2]
+    trendVal = float(slope)
+    trend = ''
+    if(trendVal>0):
+        trend = "increasing"
+    elif(trendVal<0):
+        trend = "decreasing"
+    print(float(slope))
+    return trend
+
 
 #Function that updates and animates all the graphs and the different changes in colour and text
 @app.callback(
@@ -251,12 +241,16 @@ def ML(lastRow):
      dash.dependencies.Output('graphsD4','children'),
      dash.dependencies.Output('graphsD5','children'),
      dash.dependencies.Output('graphsD6','children'),
+     dash.dependencies.Output('graphsD7','children'),
+     dash.dependencies.Output('graphsD8','children'),
      dash.dependencies.Output('Dancer1Output','children'),
      dash.dependencies.Output('Dancer2Output','children'),
      dash.dependencies.Output('Dancer3Output','children'),
+     dash.dependencies.Output('EMGOutput','children'),
      dash.dependencies.Output('Dancer1Output','style'),
      dash.dependencies.Output('Dancer2Output','style'),
      dash.dependencies.Output('Dancer3Output','style'),
+     dash.dependencies.Output('EMGOutput','style'),
     ],
     [dash.dependencies.Input('graph-update', 'n_intervals')]
     )
@@ -266,28 +260,24 @@ def update_graph(n):
         raise PreventUpdate
 
     #To be used to display graph for graphs 1,2 are for dancer 1, graphs 3 & 4 are for dancer 2, graphs 5 & 6 are for dancer 3
-    graphs1 = []
-    graphs2 = []
-    graphs3 = []
-    graphs4 = []
-    graphs5 = []
-    graphs6 = []
+    YPR1 = []
+    XYZ1 = []
+    YPR2 = []
+    XYZ2 = []
+    YPR3 = []
+    XYZ3 = []
+    EMG1 = []
+    EMG2 = []
     #A list of data names that are needed to update
-    data_names = ['Dancer1', 'Dancer2', 'Dancer3', 'Dancer4', 'Dancer5', 'Dancer6']
+    data_names = ['Beetle1', 'Beetle2', 'Beetle3']
 
     #Functions to query the database for the last saved input to PostgreSQL
     lastRow1 = getLastRow("Beetle1")
     lastRow2 = getLastRow("Beetle2")
     lastRow3 = getLastRow("Beetle3")
-    lastRow4 = getLastRow("Beetle4")
-    lastRow5 = getLastRow("Beetle5")
-    lastRow6 = getLastRow("Beetle6")
+    lastRow4 = getLastRow("EMG")
     MLDancer1 = getLastRow("MLDancer1")
 
-    #Returns the Machine learning output to be displayed on the dashboard
-    returnStr1 = ML(lastRow1)
-    returnStr2 = ML(lastRow2)
-    returnStr3 = ML(lastRow3)
 
     #Append new data
     Yaw1.append(lastRow1[0])
@@ -308,30 +298,97 @@ def update_graph(n):
     X3.append(lastRow3[3])
     Y3.append(lastRow3[4])
     Z3.append(lastRow3[5])
-    Yaw4.append(lastRow4[0])
-    Pitch4.append(lastRow4[1])
-    Roll4.append(lastRow4[2])
-    X4.append(lastRow4[3])
-    Y4.append(lastRow4[4])
-    Z4.append(lastRow4[5])
-    Yaw5.append(lastRow5[0])
-    Pitch5.append(lastRow5[1])
-    Roll5.append(lastRow5[2])
-    X5.append(lastRow5[3])
-    Y5.append(lastRow5[4])
-    Z5.append(lastRow5[5])
-    Yaw6.append(lastRow6[0])
-    Pitch6.append(lastRow6[1])
-    Roll6.append(lastRow6[2])
-    X6.append(lastRow6[3])
-    Y6.append(lastRow6[4])
-    Z6.append(lastRow6[5])
-
+    #MaxAmp.append(lastRow4[0])
+     #+(randint(-1, 1))
+    #===================================Test
+    global front
+    global back
+    global counter
+    if(front == 5 or front == 0):
+        counter *=-1
+    front +=counter
+    back +=counter*-1
+    MaxAmp.append(front)
+    MeanFreq.append(back)
+    output = ''
+    try:
+        AmpData = (list(MaxAmp))[-5:]
+        AmpTrend = determineTrend(AmpData)
+        FreqData = (list(MeanFreq))[-5:]
+        FreqTrend = determineTrend(FreqData)
+        if(FreqTrend == "decreasing" and AmpTrend == "increasing"):
+            output = "Fatigued"
+        else:
+            output = "Ready to Dance"
+    except:
+        print("EMG output not ready")
+    
+    #==========================================
+    
+    MeanAmp.append(lastRow4[1])
+    RMSAmp.append(lastRow4[2])
+    #MeanFreq.append(lastRow4[3])
 
 
     #Increase the value of the X-axis by 1 for all graphs
     X.append(X[-1]+1)
+    
+    MaxAmplitude = (go.Scatter(
+        x=list(X),
+        y=list(data_dict['MaxAmp']),
+        name='Max Amplitude',
+        mode= 'lines'
+        ))
+    MeanAmplitude = (go.Scatter(
+        x=list(X),
+        y=list(data_dict['MeanAmp']),
+        name='Mean Amplitude',
+        mode= 'lines'
+        ))
+    RMSAmplitude = (go.Scatter(
+        x=list(X),
+        y=list(data_dict['RMSAmp']),
+        name='RMS Amplitude',
+        mode= 'lines'
+        ))
+    MeanFrequency = (go.Scatter(
+        x=list(X),
+        y=list(data_dict['MeanFreq']),
+        name='Mean Frequency',
+        mode= 'lines'
+        ))
+    EMG1.append(dbc.Col(html.Div(dcc.Graph(
+                id="EMG1",
+                animate=True,
+                ##Change the value of 'data' to fig add in MeanAmplitudem RMSAmplitude
+                figure={'data': [MaxAmplitude],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
+                                                            yaxis=dict(range=[0,5]),#change to 250,250
+                                                            #yaxis=dict(range=[min(data_dict[data_name]),max(data_dict[data_name])]),
+                                                            #yaxis = dict(range = [min(),max()])
+                                                            margin={'l':30,'r':1,'t':30,'b':30},
+                                                            title='{}'.format(''),
+                                                            font=dict(family='Courier New, monospace', size=12, color='#7f7f7f'),
+                                                            height = 250,
+                                                            width = 360
+                                                            )}
+            ))))
+    EMG2.append(dbc.Col(html.Div(dcc.Graph(
+            id="EMG2",
+            animate=True,
+            ##Change the value of 'data' to fig
+            figure={'data': [MeanFrequency],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
+                                                        yaxis=dict(range=[0,5]),#change to 1.0 - 2.0
+                                                        #yaxis=dict(range=[min(data_dict[data_name]),max(data_dict[data_name])]),
+                                                        #yaxis = dict(range = [min(),max()])
+                                                        margin={'l':30,'r':1,'t':30,'b':30},
+                                                        title='{}'.format(''),
+                                                        font=dict(family='Courier New, monospace', size=12, color='#7f7f7f'),
+                                                        height = 250,
+                                                        width = 360
+                                                        )}
+        ))))
 
+    
     #Iterate through all the data to append to the relevant deque that stores each y-axis value
     for data_name in data_names:
         dancerNo =  data_name[-1]
@@ -371,40 +428,61 @@ def update_graph(n):
         name='Z-Axis',
         mode= 'lines'
         ))
+        
+        
 
-        graphFigure = eval("graphs" + dancerNo)
+        YPR = eval("YPR" + dancerNo)
+        XYZ = eval("XYZ" + dancerNo)
 
-        graphFigure.append(dbc.Col(html.Div(dcc.Graph(
+        YPR.append(dbc.Col(html.Div(dcc.Graph(
                 id=data_name,
                 animate=True,
                 ##Change the value of 'data' to fig
-                figure={'data': [YAW,PITCH,ROLL,XAxis,YAxis,ZAxis],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
-                                                            yaxis=dict(range=[-200,200]),
+                figure={'data': [YAW,PITCH,ROLL],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
+                                                            yaxis=dict(range=[-5000,5000]),#change to 250,250
                                                             #yaxis=dict(range=[min(data_dict[data_name]),max(data_dict[data_name])]),
                                                             #yaxis = dict(range = [min(),max()])
                                                             margin={'l':30,'r':1,'t':30,'b':30},
                                                             title='{}'.format(''),
                                                             font=dict(family='Courier New, monospace', size=12, color='#7f7f7f'),
                                                             height = 250,
-                                                            width = 300
+                                                            width = 360
+                                                            )}
+            ))))
+        XYZ.append(dbc.Col(html.Div(dcc.Graph(
+                id=data_name,
+                animate=True,
+                ##Change the value of 'data' to fig
+                figure={'data': [XAxis,YAxis,ZAxis],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
+                                                            yaxis=dict(range=[-50000,50000]),# <X<
+                                                            #yaxis=dict(range=[min(data_dict[data_name]),max(data_dict[data_name])]),
+                                                            #yaxis = dict(range = [min(),max()])
+                                                            margin={'l':30,'r':1,'t':30,'b':30},
+                                                            title='{}'.format(''),
+                                                            font=dict(family='Courier New, monospace', size=12, color='#7f7f7f'),
+                                                            height = 250,
+                                                            width = 360
                                                             )}
             ))))
 
     
 
-    return [graphs1,
-            graphs2,
-            graphs3,
-            graphs4,
-            graphs5,
-            graphs6,
+    return [YPR1,
+            XYZ1,
+            YPR2,
+            XYZ2,
+            YPR3,
+            XYZ3,
+            EMG1,
+            EMG2,
             "Dance Move Executed: " + MLDancer1[0],
             "Dance Move Executed: " + MLDancer1[0],
             "Dance Move Executed: " + MLDancer1[0],
+            output,
             {'background':'springgreen'} if (n%2) else {'background': 'white'},
             {'background':'springgreen'} if (n%2) else {'background': 'white'},
             {'background':'springgreen'} if (n%2) else {'background': 'white'},
-
+            {'background':'red'} if (n%2 and output == 'Fatigued') else {'background': 'white'},
             ]
 
 
