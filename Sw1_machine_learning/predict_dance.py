@@ -35,6 +35,40 @@ def predict_beetle_dance(beetle_data, model):
 def most_frequent_prediction(pred_list):
     return max(set(pred_list), key = pred_list.count)
 
+
+def find_new_position(ground_truth, b1_move, b2_move, b3_move):
+    # ground_truth = [3, 2, 1]
+    # p1_movement = 'R'
+    # p2_movement = 'S'
+    # p3_movement = 'L'
+
+    dic = {1: b1_move, 2: b2_move, 3: b3_move}
+
+    p1_movement = dic[ground_truth[0]]
+    p2_movement = dic[ground_truth[1]]
+    p3_movement = dic[ground_truth[2]]
+
+    if p1_movement == "R" and p2_movement == "S" and p3_movement == "L":
+        # output = [3, 2, 1]
+        output = [ground_truth[2], ground_truth[1], ground_truth[0]]
+    elif p1_movement == "R" and p2_movement == "L" and p3_movement == "S":
+        # output = [2, 1, 3]
+        output = [ground_truth[1], ground_truth[0], ground_truth[2]]
+    elif p1_movement == "R" and p2_movement == "L" and p3_movement == "L":
+        # output = [2, 3, 1]
+        output = [ground_truth[1], ground_truth[2], ground_truth[0]]
+    elif p1_movement == "S" and p2_movement == "R" and p3_movement == "L":
+        # output = [1, 3, 2]
+        output = [ground_truth[0], ground_truth[2], ground_truth[1]]
+    elif p1_movement == "S" and p2_movement == "L" and p3_movement == "S":
+        # output = [2, 1, 3]
+        output = [ground_truth[1], ground_truth[0], ground_truth[2]]
+    else:
+        # output = [1, 2, 3]
+        output = ground_truth
+
+    return (output)
+
 # MAIN
 
 # Get beetle data from dictionaries in arguments
@@ -43,16 +77,26 @@ beetle2_data = parse_data(beetle_2_dict, beetle_2)
 beetle3_data = parse_data(beetle_3_dict, beetle_3)
 
 # Load MLP NN model
-mlp = load('mlp_dance.joblib')
+mlp_dance = load('mlp_dance.joblib')
 
 # Predict dance move of each beetle
-beetle1_dance = predict_beetle_dance(beetle1_data, mlp)
-beetle2_dance = predict_beetle_dance(beetle1_data, mlp)
-beetle3_dance = predict_beetle_dance(beetle1_data, mlp)
+beetle1_dance = predict_beetle_dance(beetle1_data, mlp_dance)
+beetle2_dance = predict_beetle_dance(beetle2_data, mlp_dance)
+beetle3_dance = predict_beetle_dance(beetle3_data, mlp_dance)
 
 dance = (most_frequent_prediction(dance_predictions))
 #print(dance)
 
+# Load Movement ML
+mlp_move = load('mlp_movement.joblib')
 
+# Predict movement direction of each beetle
+beetle1_move = predict_beetle(beetle1_data, mlp_move)
+beetle2_move = predict_beetle(beetle1_data, mlp_move)
+beetle3_move = predict_beetle(beetle1_data, mlp_move)
+
+# Find new position
+new_pos = find_new_position(ground_truth, beetle1_move, beetle2_move, beetle3_move)
+#print(new_pos)
 
 
