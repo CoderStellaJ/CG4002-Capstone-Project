@@ -238,7 +238,7 @@ def main():
             print("action: ", my_server.action, " position: ", my_server.dancer_positions)
             if my_server.action != None and my_server.idx != current_idx:
                 with open('labels.txt', 'a') as label_file:
-                    line_file = str(my_server.idx) + " action: " + my_server.action + " position: " + my_server.dancer_positions + "\n"
+                    line_file = my_server.action + " " + my_server.dancer_positions + "\n"
                     label_file.write(line_file)
                     current_idx = my_server.idx
         display_window.update()
