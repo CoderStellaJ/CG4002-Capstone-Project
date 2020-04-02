@@ -135,8 +135,12 @@ def initHandshake(beetle):
                     if beetle.waitForNotifications(2):
                         if clocksync_flag_dict[beetle.addr] is True:
                             # function for time calibration
-                            clock_offset_dict[beetle.addr].append(calculate_clock_offset(
-                                timestamp_dict[beetle.addr]))
+                            try:
+                                clock_offset_dict[beetle.addr].append(calculate_clock_offset(
+                                    timestamp_dict[beetle.addr]))
+                            except Exception as e:
+                                clock_offset_dict[beetle.addr].append(calculate_clock_offset(
+                                    {beetle.addr: [0, 0, 0, 0]}))
                             timestamp_dict[beetle.addr].clear()
                             print("beetle %s clock offset: %i" %
                                   (beetle.addr, clock_offset_dict[beetle.addr][-1]))
@@ -520,13 +524,13 @@ if __name__ == '__main__':
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle.append(0) for idx in range(len(beetle_addresses))]
-    
+
     try:
         eval_client = eval_client.Client(
             "192.168.1.101", 8080, 6, "cg40024002group6")
     except Exception as e:
         print(e)
-    
+
     """
     try:
         board_client = dashBoardClient.Client(
@@ -547,7 +551,6 @@ if __name__ == '__main__':
 
     establish_connection("1C:BA:8C:1D:30:22")
 
-    
     # start collecting data only after 1 min passed
     while True:
         elapsed_time = time.time() - start_time
@@ -556,17 +559,18 @@ if __name__ == '__main__':
         else:
             print(elapsed_time)
             time.sleep(1)
-    
+
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
-            {data_executor.submit(getDanceData, beetle): beetle for beetle in global_beetle}
+            {data_executor.submit(getDanceData, beetle)
+                                  : beetle for beetle in global_beetle}
             data_executor.shutdown(wait=True)
         """
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
             data_executor.submit(getEMGData, global_beetle[0])
             data_executor.shutdown(wait=True)
         """
-        
+
         # do calibration once every 4 moves; change 4 to other values according to time calibration needs
         if dance_count == 1:
             print("Proceed to do time calibration...")
@@ -579,7 +583,7 @@ if __name__ == '__main__':
         if dance_count == 1:
             dance_count = 0
         dance_count += 1
-        
+
         pool = multiprocessing.Pool()
         workers = [pool.apply_async(processData, args=(address, ))
                    for address in beetle_addresses]
@@ -630,14 +634,15 @@ if __name__ == '__main__':
         # clear buffer for next move
         for address in buffer_dict.keys():
             buffer_dict[address] = ""
-        #print(beetle1_data_dict)
-        #print(beetle2_data_dict)
-        #print(beetle3_data_dict)
-
-        with open(r'dance.txt', 'a') as file:
+        # print(beetle1_data_dict)
+        # print(beetle2_data_dict)
+        # print(beetle3_data_dict)
+        with open(r'position.txt', 'a') as file:
             file.write(json.dumps(beetle1_moving_dict) + "\n")
             file.write(json.dumps(beetle2_moving_dict) + "\n")
             file.write(json.dumps(beetle3_moving_dict) + "\n")
+            file.close()
+        with open(r'dance.txt', 'a') as file:
             file.write(json.dumps(beetle1_dancing_dict) + "\n")
             file.write(json.dumps(beetle2_dancing_dict) + "\n")
             file.write(json.dumps(beetle3_dancing_dict) + "\n")
@@ -676,13 +681,13 @@ if __name__ == '__main__':
 
         ml_result = "shoutout123"
         # send data to eval and dashboard server
-        
+
         eval_pool = multiprocessing.Pool()
         workers = eval_pool.apply_async(
             eval_client.send_data, args=("1 2 3", ml_result, str(sync_delay)))
         eval_pool.close()
         ground_truth = eval_client.receive_dancer_position()
-        
+
         """
         board_pool = multiprocessing.Pool()
         workers = board_pool.apply_async(
