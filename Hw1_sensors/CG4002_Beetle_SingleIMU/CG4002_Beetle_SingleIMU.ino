@@ -4,6 +4,8 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 
+#define THRESHOLDING_SAMPLES 10
+
 // Arduino Wire library is required if I2Cdev I2CDEV_ARDUINO_WIRE implementation
 // is used in I2Cdev.h
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
@@ -35,6 +37,19 @@ volatile float ypr_lastCheck[3] = {0.0, 0.0, 0.0};  // Variable to store the 2nd
 volatile float yawDiff = 0.0;
 volatile float pitchDiff = 0.0;
 volatile float rollDiff = 0.0;
+
+volatile long accel_firstCheck[3] = {0, 0, 0};
+volatile long accel_lastCheck[3] = {0, 0, 0};
+volatile long accelXDiff = 0;
+volatile long accelYDiff = 0;
+volatile long accelZDiff = 0;
+
+volatile float yprDiff[THRESHOLDING_SAMPLES][3] = { 0.0 };
+volatile long accelDiff[THRESHOLDING_SAMPLES][3] = { 0 };
+volatile int yprIndex = 0;
+volatile int accelIndex = 0;
+
+volatile boolean stoppedMoving = false;
 
 unsigned long timestamp = 0;
 
@@ -154,24 +169,26 @@ void setup() {
   }
 
   // Delay for approximately 10 seconds so that the MPU6050 can stabilise itself
-  delay(10000);
+  //delay(10000);
   Serial.println("Stabilising completed");
 }
 
-void loop() {
+void loop() {  
   // Get two YPRs at the start to avoid FIFO overflow issues
   // Get an initial YPR value
+  
   while (1) {
     if (getYPR_worldAccel() == 1) {
       ypr_firstCheck[0] = ypr[0] * 180/M_PI;
       ypr_firstCheck[1] = ypr[1] * 180/M_PI;
       ypr_firstCheck[2] = ypr[2] * 180/M_PI;
+      accel_firstCheck[0] = accelWorld.x;
+      accel_firstCheck[1] = accelWorld.y;
+      accel_firstCheck[2] = accelWorld.z;
       break;
     }
   }
-
-  // Set a small delay to get next YPR value
-  delay(5);
+  delay(50);
   
   // Get a secondary YPR value
   while (1) {
@@ -179,15 +196,81 @@ void loop() {
       ypr_lastCheck[0] = ypr[0] * 180/M_PI;
       ypr_lastCheck[1] = ypr[1] * 180/M_PI;
       ypr_lastCheck[2] = ypr[2] * 180/M_PI;
+      accel_lastCheck[0] = accelWorld.x;
+      accel_lastCheck[1] = accelWorld.y;
+      accel_lastCheck[2] = accelWorld.z;
       break;
     }
   }
+  delay(50);
   
   // Compute the differences between these 2 YPR values to detect if there is a sudden movement 
   yawDiff = ypr_lastCheck[0] - ypr_firstCheck[0];
   pitchDiff = ypr_lastCheck[1] - ypr_firstCheck[1];
   rollDiff = ypr_lastCheck[2] - ypr_firstCheck[2];
+  accelXDiff = accel_lastCheck[0] - accel_firstCheck[0];
+  accelYDiff = accel_lastCheck[1] - accel_firstCheck[1];
+  accelZDiff = accel_lastCheck[2] - accel_firstCheck[2]; 
 
+  // Store the differences for ypr and accel into yprDiff and accelDiff into the circular buffer
+  yprDiff[yprIndex][0] = abs(yawDiff); 
+  yprDiff[yprIndex][1] = abs(pitchDiff);
+  yprDiff[yprIndex][2] = abs(rollDiff);
+  yprIndex++;
+
+  accelDiff[accelIndex][0] = abs(accelXDiff);
+  accelDiff[accelIndex][1] = abs(accelYDiff);
+  accelDiff[accelIndex][2] = abs(accelZDiff);
+  accelIndex++;
+
+  // Reset the index of yprIndex and accelIndex for circular buffer
+  if (yprIndex == THRESHOLDING_SAMPLES) {
+    yprIndex = 0;
+  }
+  if (accelIndex == THRESHOLDING_SAMPLES) {
+    accelIndex = 0;
+  }
+
+  // Compute the sum of differences
+  volatile float yawDiffSum = 0.0;
+  volatile float pitchDiffSum = 0.0;
+  volatile float rollDiffSum = 0.0;
+  volatile long accelXDiffSum = 0;
+  volatile long accelYDiffSum = 0;
+  volatile long accelZDiffSum = 0;
+  
+  for (int i = 0; i < THRESHOLDING_SAMPLES; i++) {
+    yawDiffSum += yprDiff[i][0];
+    pitchDiffSum += yprDiff[i][1];
+    rollDiffSum += yprDiff[i][2];
+    accelXDiffSum += accelDiff[i][0];
+    accelYDiffSum += accelDiff[i][1];
+    accelZDiffSum += accelDiff[i][2];
+  }
+
+  Serial.print("ypr and accel diff: ");
+  Serial.print(yawDiffSum);
+  Serial.print("\t");
+  Serial.print(pitchDiffSum);
+  Serial.print("\t");
+  Serial.print(rollDiffSum);
+  Serial.print("\t");
+  Serial.print(accelXDiffSum);
+  Serial.print("\t");
+  Serial.print(accelYDiffSum);
+  Serial.print("\t");
+  Serial.println(accelZDiffSum);
+
+  if ((abs(yawDiffSum) <= 10 || abs(pitchDiffSum) <= 10 || abs(rollDiffSum) <= 10) && (abs(accelXDiffSum) <= 2000 || abs(accelYDiffSum) <= 2000 || abs(accelZDiffSum) <= 2000)) {
+    stoppedMoving = true;
+  }
+  
+  if (stoppedMoving && ((abs(yawDiffSum) >= 15 || abs(pitchDiffSum) >= 15 || abs(rollDiffSum) >= 15) && (abs(accelXDiffSum) >= 5000 || abs(accelYDiffSum) >= 5000 || abs(accelZDiffSum) >= 5000))) {
+    stoppedMoving = false;
+    Serial.println("EXCEED THRESHOLD");
+  }
+
+  /**
   // Only start taking data if there is a spike is found in either one of the three differences 
   // The spike signifies a new dance move by the dancer 
   if (abs(yawDiff) >= 10 || abs(pitchDiff) >= 10 || abs(rollDiff) >= 10) {
@@ -214,7 +297,8 @@ void loop() {
       delay(50);
     }
   }
+  
 
   Serial.println("50 Samples Collected");
-  delay(500);
+  */
 }
