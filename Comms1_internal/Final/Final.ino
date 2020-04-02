@@ -4,6 +4,8 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 
+#define THRESHOLDING_SAMPLES 10
+
 // Arduino Wire library is required if I2Cdev I2CDEV_ARDUINO_WIRE implementation
 // is used in I2Cdev.h
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
@@ -29,18 +31,23 @@ VectorInt16 accelWorld; // [x, y, z]            world-frame accel sensor measure
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
-// These 2 ypr values is to check whether there are sudden movements, if there are then set flag to true
-volatile float ypr_firstCheck[3] = {0.0, 0.0, 0.0}; // Variabe to store the 1st ypr value
-volatile float ypr_lastCheck[3] = {0.0, 0.0, 0.0};  // Variable to store the 2nd ypr value
-volatile float yawDiff = 0.0;
-volatile float pitchDiff = 0.0;
-volatile float rollDiff = 0.0;
+// Store the previous ypr and accel value, to detect the differences and update the thresholding
+// array accordingly
+volatile float lastYaw = 0.0;
+volatile float lastPitch = 0.0;
+volatile float lastRoll = 0.0;
+volatile long lastAccelX = 0;
+volatile long lastAccelY = 0;
+volatile long lastAccelZ = 0;
 
-volatile long accel_firstCheck[3] = {0, 0, 0};
-volatile long accel_lastCheck[3] = {0, 0, 0};
-volatile long accelXDiff = 0;
-volatile long accelYDiff = 0;
-volatile long accelZDiff = 0;
+// Variables to compute thresholding
+volatile float yprDiff[THRESHOLDING_SAMPLES][3] = { 0.0 };
+volatile long accelDiff[THRESHOLDING_SAMPLES][3] = { 0 };
+volatile int yprIndex = 0;
+volatile int accelIndex = 0;
+
+// Variable to check whether the dancer has stopped moving or not
+volatile boolean stoppedMoving = false;
 
 // Communication variables
 char transmit_buffer[70];
@@ -195,11 +202,65 @@ void loop() {
   while (1) {
     // Get the initial timestamp of this new dance move
     timestamp = millis();
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 160; i++) {
       if (getYPR_worldAccel() == 0) {
         i--;
         continue;
       }
+
+      // Store the differences for ypr and accel into yprDiff and accelDiff into the circular buffer
+      yprDiff[yprIndex][0] = abs((ypr[0] * 180/M_PI) - lastYaw);
+      yprDiff[yprIndex][1] = abs((ypr[1] * 180/M_PI) - lastPitch);
+      yprDiff[yprIndex][2] = abs((ypr[2] * 180/M_PI) - lastRoll);
+      yprIndex++;
+
+      accelDiff[accelIndex][0] = abs(accelWorld.x - lastAccelX);
+      accelDiff[accelIndex][1] = abs(accelWorld.y - lastAccelY);
+      accelDiff[accelIndex][2] = abs(accelWorld.z - lastAccelZ);
+      accelIndex++;
+
+      // Update the lastYPR and lastAccel values to the current value
+      lastYaw = ypr[0] * 180/M_PI;
+      lastPitch = ypr[1] * 180/M_PI;
+      lastRoll = ypr[2] * 180/M_PI;
+      lastAccelX = accelWorld.x;
+      lastAccelY = accelWorld.y;
+      lastAccelZ = accelWorld.z;
+
+      // Reset the index of yprIndex and accelIndex for circular buffer
+      if (yprIndex == THRESHOLDING_SAMPLES) {
+        yprIndex = 0;
+      }
+      if (accelIndex == THRESHOLDING_SAMPLES) {
+        accelIndex = 0;
+      }
+
+      // Compute the sum of differences
+      volatile float yawDiffSum = 0.0;
+      volatile float pitchDiffSum = 0.0;
+      volatile float rollDiffSum = 0.0;
+      volatile long accelXDiffSum = 0;
+      volatile long accelYDiffSum = 0;
+      volatile long accelZDiffSum = 0;
+      
+      for (int j = 0; j < THRESHOLDING_SAMPLES; j++) {
+        yawDiffSum += yprDiff[j][0];
+        pitchDiffSum += yprDiff[j][1];
+        rollDiffSum += yprDiff[j][2];
+        accelXDiffSum += accelDiff[j][0];
+        accelYDiffSum += accelDiff[j][1];
+        accelZDiffSum += accelDiff[j][2];
+      }
+
+      if ((abs(yawDiffSum) <= 10 || abs(pitchDiffSum) <= 10 || abs(rollDiffSum) <= 10) && (abs(accelXDiffSum) <= 2000 || abs(accelYDiffSum) <= 2000 || abs(accelZDiffSum) <= 2000)) {
+        stoppedMoving = true;
+      }
+  
+      if (stoppedMoving && ((abs(yawDiffSum) >= 15 || abs(pitchDiffSum) >= 15 || abs(rollDiffSum) >= 15) && (abs(accelXDiffSum) >= 5000 || abs(accelYDiffSum) >= 5000 || abs(accelZDiffSum) >= 5000))) {
+        stoppedMoving = false;
+        Serial.println("EXCEED THRESHOLD");
+      }
+      
       int chksum = 0;
       char yaw[5];
       char pitch[5];
