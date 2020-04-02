@@ -27,8 +27,8 @@ class Delegate(btle.DefaultDelegate):
 
         for idx in range(len(beetle_addresses)):
             if global_delegate_obj[idx] == self:
-                print("receiving data from %s" % (beetle_addresses[idx]))
-                print("data: " + data.decode('ISO-8859-1'))
+                #print("receiving data from %s" % (beetle_addresses[idx]))
+                #print("data: " + data.decode('ISO-8859-1'))
                 if beetle_addresses[idx] == "50:F1:4A:CC:01:C4":  # emg beetle data
                     emg_buffer[beetle_addresses[idx]
                                ] += data.decode('ISO-8859-1')
@@ -218,7 +218,7 @@ def getDanceData(beetle):
                     try:
                         if beetle.waitForNotifications(2):
                             #print("getting data...")
-                            #print(packet_count_dict[beetle.addr])
+                            # print(packet_count_dict[beetle.addr])
                             # if number of datasets received from all beetles exceed expectation
                             if packet_count_dict[beetle.addr] >= num_datasets:
                                 print("sufficient datasets received from %s. Processing data now" % (
@@ -523,7 +523,7 @@ if __name__ == '__main__':
     
     try:
         eval_client = eval_client.Client(
-            "192.168.1.52", 8080, 6, "cg40024002group6")
+            "192.168.1.101", 8080, 6, "cg40024002group6")
     except Exception as e:
         print(e)
     
@@ -538,14 +538,14 @@ if __name__ == '__main__':
     establish_connection("50:F1:4A:CC:01:C4")
     time.sleep(2)
     """
+
     establish_connection("78:DB:2F:BF:2C:E2")
     time.sleep(2)
 
     establish_connection("50:F1:4A:CB:FE:EE")
     time.sleep(2)
-    
+
     establish_connection("1C:BA:8C:1D:30:22")
-    time.sleep(2)
 
     
     # start collecting data only after 1 min passed
@@ -559,16 +559,16 @@ if __name__ == '__main__':
     
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
-            {data_executor.submit(getDanceData, beetle)             : beetle for beetle in global_beetle}
+            {data_executor.submit(getDanceData, beetle): beetle for beetle in global_beetle}
             data_executor.shutdown(wait=True)
         """
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
             data_executor.submit(getEMGData, global_beetle[0])
             data_executor.shutdown(wait=True)
         """
-        """
+        
         # do calibration once every 4 moves; change 4 to other values according to time calibration needs
-        if dance_count == 4:
+        if dance_count == 1:
             print("Proceed to do time calibration...")
             # clear clock_offset_dict for next time calibration
             for address in clock_offset_dict.keys():
@@ -576,17 +576,17 @@ if __name__ == '__main__':
             for beetle in global_beetle:
                 if beetle.addr != "50:F1:4A:CC:01:C4":
                     initHandshake(beetle)
-        if dance_count == 4:
+        if dance_count == 1:
             dance_count = 0
         dance_count += 1
-        """
+        
         pool = multiprocessing.Pool()
         workers = [pool.apply_async(processData, args=(address, ))
                    for address in beetle_addresses]
         result = [worker.get() for worker in workers]
         pool.close()
         try:
-            for idx in range(1, len(result)):
+            for idx in range(0, len(result)):
                 for address in result[idx].keys():
                     if address == "50:F1:4A:CB:FE:EE":
                         beetle1_data_dict[address] = result[idx][address]
@@ -597,57 +597,63 @@ if __name__ == '__main__':
         except Exception as e:
             pass
         try:
-            for dictionary in beetle1_data_dict["50:F1:4A:CB:FE:EE"].values():
-                for dataset_num, dataset_list in dictionary.items():
-                    if dataset_list[0] == 0:  # moving data
-                        beetle1_moving_dict["50:F1:4A:CB:FE:EE"].update({dataset_num: dataset_list})
-                    else:  # dancing data
-                        beetle1_dancing_dict["50:F1:4A:CB:FE:EE"].update({dataset_num: dataset_list})
+            for dataset_num, dataset_list in beetle1_data_dict["50:F1:4A:CB:FE:EE"].items():
+                if dataset_list[0] == 0:  # moving data
+                    beetle1_moving_dict["50:F1:4A:CB:FE:EE"].update(
+                        {dataset_num: dataset_list})
+                else:  # dancing data
+                    beetle1_dancing_dict["50:F1:4A:CB:FE:EE"].update(
+                        {dataset_num: dataset_list})
         except Exception as e:
             pass
         try:
-            for dictionary in beetle2_data_dict["50:F1:4A:CB:FE:EE"].values():
-                for dataset_num, dataset_list in dictionary.items():
-                    if dataset_list[0] == 0:  # moving data
-                        beetle1_moving_dict["50:F1:4A:CB:FE:EE"].update({dataset_num: dataset_list})
-                    else:  # dancing data
-                        beetle1_dancing_dict["50:F1:4A:CB:FE:EE"].update({dataset_num: dataset_list})
+            for dataset_num, dataset_list in beetle2_data_dict["78:DB:2F:BF:2C:E2"].items():
+                if dataset_list[0] == 0:  # moving data
+                    beetle2_moving_dict["78:DB:2F:BF:2C:E2"].update(
+                        {dataset_num: dataset_list})
+                else:  # dancing data
+                    beetle2_dancing_dict["78:DB:2F:BF:2C:E2"].update(
+                        {dataset_num: dataset_list})
         except Exception as e:
             pass
         try:
-            for dictionary in beetle3_data_dict["50:F1:4A:CB:FE:EE"].values():
-                for dataset_num, dataset_list in dictionary.items():
-                    if dataset_list[0] == 0:  # moving data
-                        beetle1_moving_dict["50:F1:4A:CB:FE:EE"].update({dataset_num: dataset_list})
-                    else:  # dancing data
-                        beetle1_dancing_dict["50:F1:4A:CB:FE:EE"].update({dataset_num: dataset_list})
+            for dataset_num, dataset_list in beetle3_data_dict["1C:BA:8C:1D:30:22"].items():
+                if dataset_list[0] == 0:  # moving data
+                    beetle3_moving_dict["1C:BA:8C:1D:30:22"].update(
+                        {dataset_num: dataset_list})
+                else:  # dancing data
+                    beetle3_dancing_dict["1C:BA:8C:1D:30:22"].update(
+                        {dataset_num: dataset_list})
         except Exception as e:
             pass
-        
+
         # clear buffer for next move
         for address in buffer_dict.keys():
             buffer_dict[address] = ""
-        print(beetle1_data_dict)
-        print(beetle2_data_dict)
-        print(beetle3_data_dict)
-        
+        #print(beetle1_data_dict)
+        #print(beetle2_data_dict)
+        #print(beetle3_data_dict)
+
         with open(r'dance.txt', 'a') as file:
-            file.write(json.dumps(beetle1_data_dict) + "\n")
-            file.write(json.dumps(beetle2_data_dict) + "\n")
-            file.write(json.dumps(beetle3_data_dict) + "\n")
+            file.write(json.dumps(beetle1_moving_dict) + "\n")
+            file.write(json.dumps(beetle2_moving_dict) + "\n")
+            file.write(json.dumps(beetle3_moving_dict) + "\n")
+            file.write(json.dumps(beetle1_dancing_dict) + "\n")
+            file.write(json.dumps(beetle2_dancing_dict) + "\n")
+            file.write(json.dumps(beetle3_dancing_dict) + "\n")
             file.close()
         print("change dance and position!")
-        """
+
         # synchronization delay
         try:
             beetle1_time_ultra96 = calculate_ultra96_time(
-                beetle1_data_dict, clock_offset_dict["50:F1:4A:CB:FE:EE"][0])
+                beetle1_dancing_dict, clock_offset_dict["50:F1:4A:CB:FE:EE"][0])
 
             beetle2_time_ultra96 = calculate_ultra96_time(
-                beetle2_data_dict, clock_offset_dict["78:DB:2F:BF:2C:E2"][0])
+                beetle2_dancing_dict, clock_offset_dict["78:DB:2F:BF:2C:E2"][0])
 
             beetle3_time_ultra96 = calculate_ultra96_time(
-                beetle3_data_dict, clock_offset_dict["1C:BA:8C:1D:30:22"][0])
+                beetle3_dancing_dict, clock_offset_dict["1C:BA:8C:1D:30:22"][0])
 
             sync_delay = max(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96) - \
                 min(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96)
@@ -658,7 +664,7 @@ if __name__ == '__main__':
         # print("Beetle 2 ultra 96 time: ", beetle2_time_ultra96)
         # print("Beetle 3 ultra 96 time: ", beetle3_time_ultra96)
         print("Synchronization delay is: ", sync_delay)
-        """
+
         """
         # machine learning
         # ml_result = get_prediction(beetle1_data_dict)
@@ -669,7 +675,6 @@ if __name__ == '__main__':
         """
 
         ml_result = "shoutout123"
-        sync_delay = 1
         # send data to eval and dashboard server
         
         eval_pool = multiprocessing.Pool()
