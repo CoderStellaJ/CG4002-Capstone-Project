@@ -34,7 +34,7 @@ class Delegate(btle.DefaultDelegate):
                                ] += data.decode('ISO-8859-1')
                     if '>' in data.decode('ISO-8859-1'):
                         print("sending emg dataset to dashboard")
-                        #packet_count_dict[beetle_addresses[idx]] += 1
+                        packet_count_dict[beetle_addresses[idx]] += 1
                         """
                         try:
                             arr = emg_buffer[beetle_addresses[idx]].split(">")[
@@ -114,6 +114,7 @@ class Delegate(btle.DefaultDelegate):
                             """
 
 
+"""
 class EMGThread(object):
     def __init__(self):
         thread = threading.Thread(target=self.getEMGData, args=(beetle, ))
@@ -127,9 +128,11 @@ class EMGThread(object):
                     continue
             except Exception as e:
                 reestablish_connection(beetle)
+"""
 
 
 def initHandshake(beetle):
+    retries = 0
     if beetle.addr != "50:F1:4A:CC:01:C4":
         ultra96_sending_timestamp = time.time() * 1000
         incoming_data_flag[beetle.addr] = True
@@ -139,7 +142,8 @@ def initHandshake(beetle):
                 ultra96_sending_timestamp = time.time() * 1000
                 timestamp_dict[beetle.addr].append(
                     ultra96_sending_timestamp)
-                print("Sending 'T' and 'H' and 'Z' packets to %s" % (beetle.addr))
+                print("Sending 'T' and 'H' and 'Z' packets to %s" %
+                      (beetle.addr))
                 characteristic.write(
                     bytes('T', 'UTF-8'), withResponse=False)
                 characteristic.write(
@@ -151,32 +155,37 @@ def initHandshake(beetle):
                         if beetle.waitForNotifications(2):
                             if clocksync_flag_dict[beetle.addr] is True:
                                 # function for time calibration
-                                print(timestamp_dict[beetle.addr])
                                 try:
                                     clock_offset_dict[beetle.addr].append(calculate_clock_offset(
                                         timestamp_dict[beetle.addr]))
                                 except Exception as e:
+                                    print(e)
                                     clock_offset_dict[beetle.addr].append(
                                         calculate_clock_offset([0, 0, 0, 0]))
                                 timestamp_dict[beetle.addr].clear()
                                 print("beetle %s clock offset: %i" %
-                                    (beetle.addr, clock_offset_dict[beetle.addr][-1]))
+                                      (beetle.addr, clock_offset_dict[beetle.addr][-1]))
                                 clocksync_flag_dict[beetle.addr] = False
                                 incoming_data_flag[beetle.addr] = False
                                 return
                             else:
                                 continue
                         else:
-                            print(
-                                "Failed to receive timestamp, sending 'Z', 'T', 'H', and 'R' packet to %s" % (beetle.addr))
-                            characteristic.write(
-                                bytes('R', 'UTF-8'), withResponse=False)
-                            characteristic.write(
-                                bytes('T', 'UTF-8'), withResponse=False)
-                            characteristic.write(
-                                bytes('H', 'UTF-8'), withResponse=False)
-                            characteristic.write(
-                                bytes('Z', 'UTF-8'), withResponse=False)
+                            while True:
+                                if retries >= 5:
+                                    retries = 0
+                                    break
+                                print(
+                                    "Failed to receive timestamp, sending 'Z', 'T', 'H', and 'R' packet to %s" % (beetle.addr))
+                                characteristic.write(
+                                    bytes('R', 'UTF-8'), withResponse=False)
+                                characteristic.write(
+                                    bytes('T', 'UTF-8'), withResponse=False)
+                                characteristic.write(
+                                    bytes('H', 'UTF-8'), withResponse=False)
+                                characteristic.write(
+                                    bytes('Z', 'UTF-8'), withResponse=False)
+                                retries += 1
                     except Exception as e:
                         reestablish_connection(beetle)
 
@@ -202,6 +211,11 @@ def establish_connection(address):
                         return
         except Exception as e:
             print(e)
+            for idx in range(len(beetle_addresses)):
+                # for initial connections or when any beetle is disconnected
+                if beetle_addresses[idx] == address:
+                    if global_beetle[idx] != 0:  # do not reconnect if already connected
+                        return
             time.sleep(1)
 
 
@@ -296,7 +310,6 @@ def getDanceData(beetle):
                         reestablish_connection(beetle)
 
 
-"""
 def getEMGData(beetle):
     retries = 0
     for characteristic in beetle.getCharacteristics():
@@ -313,7 +326,7 @@ def getEMGData(beetle):
             while True:
                 try:
                     if beetle.waitForNotifications(2):
-                        if packet_count_dict[beetle.addr] >= 1:
+                        if packet_count_dict[beetle.addr] >= 5:
                             packet_count_dict[beetle.addr] = 0
                             retries = 0
                             while True:
@@ -330,7 +343,6 @@ def getEMGData(beetle):
                             bytes('E', 'UTF-8'), withResponse=False)
                 except Exception as e:
                     reestablish_connection(beetle)
-"""
 
 
 def processData(address):
@@ -581,13 +593,13 @@ if __name__ == '__main__':
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle.append(0) for idx in range(len(beetle_addresses))]
-    """
+    
     try:
         eval_client = eval_client.Client(
-            "192.168.1.101", 8080, 6, "cg40024002group6")
+            "192.168.43.6", 8080, 6, "cg40024002group6")
     except Exception as e:
         print(e)
-    """
+
     """
     try:
         board_client = dashBoardClient.Client(
@@ -600,13 +612,22 @@ if __name__ == '__main__':
     time.sleep(2)
 
     establish_connection("78:DB:2F:BF:2C:E2")
-    time.sleep(2)
+
+    # Load MLP NN model
+    mlp_dance = load('mlp_dance.joblib')
 
     establish_connection("50:F1:4A:CB:FE:EE")
     time.sleep(2)
 
+    # Load Movement ML
+    mlp_move = load('mlp_movement.joblib')
+
     establish_connection("1C:BA:8C:1D:30:22")
-    """
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
+        data_executor.submit(getEMGData, global_beetle[0])
+        data_executor.shutdown(wait=True)
+
     # start collecting data only after 1 min passed
     while True:
         elapsed_time = time.time() - start_time
@@ -615,16 +636,12 @@ if __name__ == '__main__':
         else:
             print(elapsed_time)
             time.sleep(1)
-    """
 
+    """
     for beetle in global_beetle:
         print(beetle.addr)
     emg_thread = EMGThread(global_beetle[3])
-
-    # Load MLP NN model
-    mlp_dance = load('mlp_dance.joblib')
-    # Load Movement ML
-    mlp_move = load('mlp_movement.joblib')
+    """
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
             {data_executor.submit(getDanceData, beetle)
@@ -635,7 +652,6 @@ if __name__ == '__main__':
             data_executor.submit(getEMGData, global_beetle[0])
             data_executor.shutdown(wait=True)
         """
-
         # do calibration once every 4 moves; change 4 to other values according to time calibration needs
         if dance_count == 1:
             print("Proceed to do time calibration...")
@@ -656,7 +672,7 @@ if __name__ == '__main__':
         pool.close()
         try:
             # change to 1 if using emg beetle, 0 if not using
-            for idx in range(0, len(result)):
+            for idx in range(1, len(result)):
                 for address in result[idx].keys():
                     if address == "50:F1:4A:CB:FE:EE":
                         beetle1_data_dict[address] = result[idx][address]
@@ -745,6 +761,15 @@ if __name__ == '__main__':
         ml_result = workers.get()
         ml_pool.close()
         """
+
+        # Get beetle data from dictionaries in arguments
+        beetle1_dancing_dict = parse_data(beetle1_dancing_dict, beetle_1)
+        beetle2_dancing_dict = parse_data(beetle2_dancing_dict, beetle_2)
+        beetle3_dancing_dict = parse_data(beetle3_dancing_dict, beetle_3)
+        beetle1_moving_dict = parse_data(beetle1_moving_dict, beetle_1)
+        beetle2_moving_dict = parse_data(beetle2_moving_dict, beetle_2)
+        beetle3_moving_dict = parse_data(beetle3_moving_dict, beetle_3)
+
         # Predict dance move of each beetle
         beetle1_dance = predict_beetle_dance(beetle1_dancing_dict, mlp_dance)
         beetle2_dance = predict_beetle_dance(beetle2_dancing_dict, mlp_dance)
@@ -765,7 +790,7 @@ if __name__ == '__main__':
         print(new_pos)
         # print(ml_result)
         # send data to eval and dashboard server
-        """
+
         eval_pool = multiprocessing.Pool()
         workers = eval_pool.apply_async(
             eval_client.send_data, args=("1 2 3", ml_result, str(sync_delay)))
@@ -773,9 +798,10 @@ if __name__ == '__main__':
         ground_truth = eval_client.receive_dancer_position().split(' ')
         ground_truth = [int(ground_truth[0]), int(
             ground_truth[1]), int(ground_truth[2])]
+
         """
-        """
-        final_string = dance + " " + str(new_pos[0]) + " " + str(new_pos[1]) + " " + str(new_pos[2])
+        final_string = dance + " " + \
+            str(new_pos[0]) + " " + str(new_pos[1]) + " " + str(new_pos[2])
         board_pool = multiprocessing.Pool()
         workers = board_pool.apply_async(
             board_client.send_data_to_DB, args=("MLDancer1", final_string))
