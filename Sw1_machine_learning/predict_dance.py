@@ -10,8 +10,8 @@ ground_truth = [1,2,3]
 
 # BEETLE ADDRESSES
 beetle_1 = "50:F1:4A:CB:FE:EE"
-beetle_2 = "1C:BA:8C:1D:30:22"
-beetle_3 = "78:DB:2F:BF:2C:E2"
+beetle_2 = "78:DB:2F:BF:2C:E2"
+beetle_3 = "1C:BA:8C:1D:30:22"
 
 # returns a list of lists, each list containing a row of sensor data
 def parse_data(dic_data, beetle):
