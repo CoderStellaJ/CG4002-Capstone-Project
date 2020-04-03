@@ -1,6 +1,8 @@
 from joblib import dump, load # to load ML
 import numpy # to count labels and store in dict
 import operator # to get most predicted label
+import random # RNG in worst case
+from sklearn.preprocessing import StandardScaler # to normalise data
 
 # SAMPLE ARGUMENTS
 beetle1_dict = {"50:F1:4A:CB:FE:EE": {"1": [97686, 92.75, -64.83, -10.33, -6, 79, 148], "2": [97686, 92.75, -64.83, -10.33, -19, 71, 154], "3": [97686, 92.77, -64.84, -10.34, -29, 64, 135], "4": [97686, 92.78, -64.84, -10.34, -34, 59, 127], "5": [97686, 92.79, -64.84, -10.36, -43, 60, 126], "6": [97686, 92.81, -64.84, -10.37, -41, 63, 134], "7": [97686, 92.82, -64.85, -10.38, -23, 51, 145], "8": [97686, 92.83, -64.85, -10.4, -10, 48, 146], "10": [97686, 93.06, -65.01, -10.52, -57, -31, 119], "12": [97686, 93.09, -64.98, -10.58, 20, 61, 171], "14": [97686, 94.14, -65.5, -10.32, 135, 87, 131], "15": [97686, 94.16, -65.56, -10.21, 149, 17, 55], "17": [97686, 94.11, -65.58, -9.92, 118, -41, 58], "18": [97686, 94.08, -65.6, -9.74, 71, -32, 109], "19": [97686, 102.82, -63.03, -9.67, -32, -243, -153], "20": [97686, 103.28, -63.25, -9.69, 152, -149, 280], "21": [97686, 103.72, -63.43, -9.69, -311, -96, 51], "22": [97686, 104.16, -63.5, -9.71, -157, -97, -119], "24": [97686, 105.18, -63.61, -9.55, -19, -137, -122], "25": [97686, 105.45, -63.74, -9.47, -6, -131, -82], "26": [97686, 113.42, -67.64, -7.21, 168, 104, 231], "27": [97686, 115.37, -66.95, -7.62, 198, 58, -218], "29": [97686, 118.25, -65.52, -9.03, 130, -113, -113], "30": [97686, 119.32, -72.76, 0.71, -269, 148, 212], "31": [97686, 119.6, -73.0, 0.33, -65, -81, 318], "32": [97686, 119.93, -73.17, -0.1, 126, -294, -211], "33": [97686, 120.72, -73.19, -1.5, -181, -287, 223], "34": [97686, 120.9, -73.05, -1.99, -62, 194, -294], "35": [97686, 111.14, -72.23, -7.67, 181, -12, -17], "36": [97686, 110.29, -72.51, -8.09, 0, -65, 258], "38": [97686, 110.38, -71.11, -9.12, -29, -2, -159], "40": [97686, 100.83, -75.1, -9.03, -153, 290, 307], "41": [97686, 100.07, -75.86, -8.56, -134, -257, 314], "42": [97686, 99.26, -76.42, -7.99, -143, -29, -149], "43": [97686, 95.47, -77.41, -5.16, 245, 106, -37], "44": [97686, 97.4, -75.67, -8.91, -272, 304, -65], "45": [97686, 97.42, -76.27, -8.71, -285, -324, 225], "46": [97686, 97.43, -76.88, -8.49, 308, 289, -222], "47": [97686, 97.36, -77.51, -8.22, 316, 213, -130], "49": [97686, 96.69, -80.28, -6.96, -208, 64, 213], "50": [97686, 96.37, -81.22, -6.48, -322, -76, -48], "51": [97686, 90.91, -69.11, -7.22, -242, 48, -164], "52": [97686, 90.63, -67.59, -8.17, -242, 52, -80], "54": [97686, 90.22, -63.5, -11.75, 190, -96, 237], "56": [97686, 90.29, -63.46, -12.52, 50, -29, -164], "57": [97686, 90.35, -63.53, -12.68, 298, -282, 292], "58": [97686, 67.14, -56.12, 21.7, 139, 35, 150], "60": [97686, 51.77, -44.48, 38.89, 218, 200, 184], "61": [97686, 48.17, -41.22, 42.87, -112, -224, -18], "62": [97686, 44.39, -37.83, 46.92, -208, -245, 223], "63": [97686, 40.31, -34.18, 51.09, -34, 197, -228], "64": [97686, -95.64, 49.83, -2.99, 305, 216, -88], "65": [97686, -98.98, 49.96, -6.35, -262, 94, 50], "67": [97686, -102.79, 49.44, -9.53, 319, 46, 30], "68": [97686, -104.33, 49.48, -10.43, 198, -32, -255], "69": [97686, -106.04, 49.4, -11.57, -319, -262, 197], "70": [97686, -107.92, 49.18, -12.9, 218, 226, -41], "73": [97686, -153.55, 21.17, 22.59, -324, -72, -186], "74": [97686, -151.43, 21.46, 16.91, -116, 26, -110], "75": [97686, -148.75, 21.68, 14.05, 285, 107, 179], "76": [97686, -145.45, 22.24, 11.37, 187, -187, -41], "77": [97686, -96.59, 52.97, -6.54, -19, -238, 133], "78": [97686, -96.5, 53.07, -6.76, -67, -160, 317], "79": [97686, -96.65, 53.12, -7.17, -36, -232, 207], "80": [97686, -97.18, 53.05, -7.85, 82, 270, 168], "81": [97686, -97.99, 52.94, -8.73, 322, 185, 225], "82": [97686, -98.9, 52.84, -9.69, 200, 140, -80], "83": [97686, -165.67, 26.77, 4.82, -170, -209, -208], "84": [97686, -168.25, 28.57, 8.26, 151, 322, 152], "86": [97686, -169.99, 32.11, 17.1, -120, 1, -192], "87": [97686, -167.85, 31.65, 18.74, -48, 75, -231], "88": [97686, -164.64, 30.55, 19.08, -193, 263, -105], "89": [97686, -161.2, 29.55, 18.21, -33, 157, 255], "92": [97686, -101.17, 52.14, -3.93, 63, -200, -192], "93": [97686, -115.88, 45.52, -17.56, 17, 59, 283], "94": [97686, -120.39, 42.62, -21.07, 234, 230, 124], "95": [97686, -123.89, 40.58, -23.04, 234, -314, 3], "96": [97686, -146.39, 24.22, 20.25, 101, -309, -271], "97": [97686, -144.34, 24.2, 17.55, 85, -253, 86], "98": [97686, -142.94, 24.27, 14.44, 159, 319, -81], "100": [97686, -129.2, 28.04, -0.74, 319, 53, 90], "101": [97686, -126.44, 30.42, -2.99, -137, 23, 319], "103": [97686, -128.61, 37.78, -28.11, 49, 187, 60], "104": [97686, -132.11, 36.33, -25.49, 178, -32, -248], "105": [97686, -133.51, 35.89, -23.32, -241, 76, -316]}}
@@ -9,9 +11,14 @@ beetle2_dict = {"1C:BA:8C:1D:30:22": {"1": [95396, -90.59, -78.72, 3.89, 15, 71,
 ground_truth = [1,2,3]
 
 # BEETLE ADDRESSES
-beetle_1 = "50:F1:4A:CB:FE:EE"
-beetle_2 = "1C:BA:8C:1D:30:22"
-beetle_3 = "78:DB:2F:BF:2C:E2"
+beetle1 = "50:F1:4A:CB:FE:EE"
+beetle2 = "1C:BA:8C:1D:30:22"
+beetle3 = "78:DB:2F:BF:2C:E2"
+
+# RNG for worst case
+ACTIONS = ['muscle', 'weightlifting', 'shoutout']
+POSITIONS = ['1 2 3', '3 2 1', '2 3 1', '3 1 2', '1 3 2', '2 1 3']
+
 
 # returns a list of lists, each list containing a row of sensor data
 def parse_data(dic_data, beetle):
@@ -24,16 +31,18 @@ def parse_data(dic_data, beetle):
         data.append(ypr)
     return (data)
 
-def predict_beetle_dance(beetle_data, model):
+
+def predict_beetle(beetle_data, model):
     pred_arr = model.predict(beetle_data)
     unique, counts = numpy.unique(pred_arr, return_counts=True)
     pred_count = dict(zip(unique, counts))
     prediction = max(pred_count.items(), key=operator.itemgetter(1))[0]
     return prediction
 
+
 # Program to find most frequent element in a list
 def most_frequent_prediction(pred_list):
-    return max(set(pred_list), key = pred_list.count)
+    return max(set(pred_list), key=pred_list.count)
 
 
 def find_new_position(ground_truth, b1_move, b2_move, b3_move):
@@ -69,34 +78,87 @@ def find_new_position(ground_truth, b1_move, b2_move, b3_move):
 
     return (output)
 
-# MAIN
 
-# Get beetle data from dictionaries in arguments
-beetle1_data = parse_data(beetle_1_dict, beetle_1)
-beetle2_data = parse_data(beetle_2_dict, beetle_2)
-beetle3_data = parse_data(beetle_3_dict, beetle_3)
+def eval_1beetle(beetle_dict_1, beetle_1):
+    # Get beetle data from dictionaries
+    beetle1_data = parse_data(beetle_dict_1, beetle_1)
+    # Predict dance move of each beetle
+    beetle1_dance = predict_beetle(beetle1_data, mlp_dance)
+
+    new_pos = random.choice(POSITIONS)
+
+    return (beetle1_dance, new_pos)
+
+
+def normalise_data(data):
+    scaler = StandardScaler()
+    scaler.fit(data)
+    data = scaler.transform(data)
+
+    return data
+
 
 # Load MLP NN model
 mlp_dance = load('mlp_dance.joblib')
 
-# Predict dance move of each beetle
-beetle1_dance = predict_beetle_dance(beetle1_data, mlp_dance)
-beetle2_dance = predict_beetle_dance(beetle2_data, mlp_dance)
-beetle3_dance = predict_beetle_dance(beetle3_data, mlp_dance)
-
-dance = (most_frequent_prediction(dance_predictions))
-#print(dance)
-
 # Load Movement ML
 mlp_move = load('mlp_movement.joblib')
 
-# Predict movement direction of each beetle
-beetle1_move = predict_beetle(beetle1_data, mlp_move)
-beetle2_move = predict_beetle(beetle1_data, mlp_move)
-beetle3_move = predict_beetle(beetle1_data, mlp_move)
 
-# Find new position
-new_pos = find_new_position(ground_truth, beetle1_move, beetle2_move, beetle3_move)
-#print(new_pos)
+# MAIN
+
+if beetle1_dict[beetle1] and beetle2_dict[beetle2] and beetle3_dict[beetle3]:
+    # Get beetle data from dictionaries in arguments
+    beetle1_data = parse_data(beetle1_dict, beetle1)
+    beetle2_data = parse_data(beetle2_dict, beetle2)
+    beetle3_data = parse_data(beetle3_dict, beetle3)
+
+    # Normalise data
+    beetle1_data_norm = normalise_data(beetle1_data)
+    beetle2_data_norm = normalise_data(beetle2_data)
+    beetle3_data_norm = normalise_data(beetle3_data)
+
+    # Predict dance move of each beetle
+    beetle1_dance = predict_beetle(beetle1_data_norm, mlp_dance)
+    beetle2_dance = predict_beetle(beetle2_data_norm, mlp_dance)
+    beetle3_dance = predict_beetle(beetle3_data_norm, mlp_dance)
+
+    dance_predictions = [beetle1_dance, beetle2_dance, beetle3_dance]
+
+    dance = most_frequent_prediction(dance_predictions)
+    print(dance)
+
+    # Predict movement direction of each beetle
+    beetle1_move = predict_beetle(beetle1_data, mlp_move)
+    beetle2_move = predict_beetle(beetle2_data, mlp_move)
+    beetle3_move = predict_beetle(beetle3_data, mlp_move)
+
+    # Find new position
+    new_pos = find_new_position(ground_truth, beetle1_move, beetle2_move, beetle3_move)
+    print(new_pos)
+
+elif beetle2_dict[beetle2] and beetle3_dict[beetle3]:
+    dance, new_pos = eval_1beetle(beetle2_dict, beetle2)
+
+elif beetle1_dict[beetle1] and beetle3_dict[beetle3]:
+    dance, new_pos = eval_1beetle(beetle1_dict, beetle1)
+
+elif beetle1_dict[beetle1] and beetle2_dict[beetle2]:
+    dance, new_pos = eval_1beetle(beetle1_dict, beetle1)
+
+elif beetle1_dict[beetle1]:
+    dance, new_pos = eval_1beetle(beetle1_dict, beetle1)
+
+elif beetle2_dict[beetle2]:
+    dance, new_pos = eval_1beetle(beetle2_dict, beetle2)
+
+elif beetle3_dict[beetle3]:
+    dance, new_pos = eval_1beetle(beetle3_dict, beetle3)
+
+else:
+    # RNG
+    dance = random.choice(ACTIONS)
+    new_pos = random.choice(POSITIONS)
+
 
 
