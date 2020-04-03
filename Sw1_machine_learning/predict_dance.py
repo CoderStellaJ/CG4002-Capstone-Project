@@ -76,7 +76,9 @@ def find_new_position(ground_truth, b1_move, b2_move, b3_move):
         # output = [1, 2, 3]
         output = ground_truth
 
-    return (output)
+    position = str(output[0]) + " " + str(output[1]) + " " + str(output[2])
+
+    return position
 
 
 def eval_1beetle(beetle_dict_1, beetle_1):
@@ -126,7 +128,6 @@ if beetle1_dict[beetle1] and beetle2_dict[beetle2] and beetle3_dict[beetle3]:
     dance_predictions = [beetle1_dance, beetle2_dance, beetle3_dance]
 
     dance = most_frequent_prediction(dance_predictions)
-    print(dance)
 
     # Predict movement direction of each beetle
     beetle1_move = predict_beetle(beetle1_data, mlp_move)
@@ -135,7 +136,6 @@ if beetle1_dict[beetle1] and beetle2_dict[beetle2] and beetle3_dict[beetle3]:
 
     # Find new position
     new_pos = find_new_position(ground_truth, beetle1_move, beetle2_move, beetle3_move)
-    print(new_pos)
 
 elif beetle2_dict[beetle2] and beetle3_dict[beetle3]:
     dance, new_pos = eval_1beetle(beetle2_dict, beetle2)
@@ -160,5 +160,7 @@ else:
     dance = random.choice(ACTIONS)
     new_pos = random.choice(POSITIONS)
 
+#print(dance)
+#print(new_pos)
 
 
