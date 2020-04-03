@@ -34,7 +34,7 @@ class Delegate(btle.DefaultDelegate):
                                ] += data.decode('ISO-8859-1')
                     if '>' in data.decode('ISO-8859-1'):
                         print("sending emg dataset to dashboard")
-                        packet_count_dict[beetle_addresses[idx]] += 1
+                        #packet_count_dict[beetle_addresses[idx]] += 1
                         """
                         try:
                             arr = emg_buffer[beetle_addresses[idx]].split(">")[
@@ -114,7 +114,7 @@ class Delegate(btle.DefaultDelegate):
                             """
 
 
-class EMGThread(beetle):
+class EMGThread(object):
     def __init__(self):
         thread = threading.Thread(target=self.getEMGData, args=(beetle, ))
         thread.daemon = True                            # Daemonize thread
@@ -615,9 +615,15 @@ if __name__ == '__main__':
             print(elapsed_time)
             time.sleep(1)
     """
+
     for beetle in global_beetle:
         print(beetle.addr)
     emg_thread = EMGThread(global_beetle[3])
+
+    # Load MLP NN model
+    mlp_dance = load('mlp_dance.joblib')
+    # Load Movement ML
+    mlp_move = load('mlp_movement.joblib')
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
             {data_executor.submit(getDanceData, beetle)
@@ -738,10 +744,6 @@ if __name__ == '__main__':
         ml_result = workers.get()
         ml_pool.close()
         """
-
-        # Load MLP NN model
-        mlp_dance = load('mlp_dance.joblib')
-
         # Predict dance move of each beetle
         beetle1_dance = predict_beetle_dance(beetle1_dancing_dict, mlp_dance)
         beetle2_dance = predict_beetle_dance(beetle2_dancing_dict, mlp_dance)
@@ -750,13 +752,11 @@ if __name__ == '__main__':
         dance = (most_frequent_prediction(dance_predictions))
         print(dance)
 
-        # Load Movement ML
-        mlp_move = load('mlp_movement.joblib')
 
         # Predict movement direction of each beetle
-        beetle1_move = predict_beetle(beetle1_moving_dict, mlp_move)
-        beetle2_move = predict_beetle(beetle2_moving_dict, mlp_move)
-        beetle3_move = predict_beetle(beetle3_moving_dict, mlp_move)
+        beetle1_move = predict_beetle_dance(beetle1_moving_dict, mlp_move)
+        beetle2_move = predict_beetle_dance(beetle2_moving_dict, mlp_move)
+        beetle3_move = predict_beetle_dance(beetle3_moving_dict, mlp_move)
 
         # Find new position
         new_pos = find_new_position(
