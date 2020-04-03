@@ -114,6 +114,21 @@ class Delegate(btle.DefaultDelegate):
                             """
 
 
+class EMGThread(beetle):
+    def __init__(self):
+        thread = threading.Thread(target=self.getEMGData, args=(beetle, ))
+        thread.daemon = True                            # Daemonize thread
+        thread.start()                                  # Start the execution
+
+    def getEMGData(self, beetle):
+        while True:
+            try:
+                if beetle.waitForNotifications(2):
+                    continue
+            except Exception as e:
+                reestablish_connection(beetle)
+
+
 def initHandshake(beetle):
     ultra96_sending_timestamp = time.time() * 1000
     incoming_data_flag[beetle.addr] = True
@@ -139,8 +154,8 @@ def initHandshake(beetle):
                                 clock_offset_dict[beetle.addr].append(calculate_clock_offset(
                                     timestamp_dict[beetle.addr]))
                             except Exception as e:
-                                clock_offset_dict[beetle.addr].append(calculate_clock_offset(
-                                    {beetle.addr: [0, 0, 0, 0]}))
+                                clock_offset_dict[beetle.addr].append(
+                                    calculate_clock_offset([0, 0, 0, 0]))
                             timestamp_dict[beetle.addr].clear()
                             print("beetle %s clock offset: %i" %
                                   (beetle.addr, clock_offset_dict[beetle.addr][-1]))
@@ -279,6 +294,7 @@ def getDanceData(beetle):
                         reestablish_connection(beetle)
 
 
+"""
 def getEMGData(beetle):
     retries = 0
     for characteristic in beetle.getCharacteristics():
@@ -312,6 +328,7 @@ def getEMGData(beetle):
                             bytes('E', 'UTF-8'), withResponse=False)
                 except Exception as e:
                     reestablish_connection(beetle)
+"""
 
 
 def processData(address):
@@ -439,28 +456,63 @@ def processData(address):
         return data_dict
 
 
-def parse_hand_data(dic_data):
-
+def parse_data(dic_data, beetle):
     # collect hand data
     data = []
-
-    for v in dic_data[hand].values():  # k = data point no, v = data collected
-        ypr = []  # yaw, pitch, roll, accx, y, z
+    for v in dic_data[beetle].values():
+        ypr = []  # yaw, pitch, roll
         for i in range(1, 7):
             ypr.append(v[i])
         data.append(ypr)
+    return (data)
 
-    return(data)
 
-
-def get_prediction(dic_data):
-    ypr_data = parse_hand_data(dic_data)
-    mlp = load('mlp_dance.joblib')
-    y_pred = mlp.predict(ypr_data)
-    unique, counts = numpy.unique(y_pred, return_counts=True)
-    y_pred_count = dict(zip(unique, counts))
-    prediction = max(y_pred_count.items(), key=operator.itemgetter(1))[0]
+def predict_beetle_dance(beetle_data, model):
+    pred_arr = model.predict(beetle_data)
+    unique, counts = numpy.unique(pred_arr, return_counts=True)
+    pred_count = dict(zip(unique, counts))
+    prediction = max(pred_count.items(), key=operator.itemgetter(1))[0]
     return prediction
+
+# Program to find most frequent element in a list
+
+
+def most_frequent_prediction(pred_list):
+    return max(set(pred_list), key=pred_list.count)
+
+
+def find_new_position(ground_truth, b1_move, b2_move, b3_move):
+    # ground_truth = [3, 2, 1]
+    # p1_movement = 'R'
+    # p2_movement = 'S'
+    # p3_movement = 'L'
+
+    dic = {1: b1_move, 2: b2_move, 3: b3_move}
+
+    p1_movement = dic[ground_truth[0]]
+    p2_movement = dic[ground_truth[1]]
+    p3_movement = dic[ground_truth[2]]
+
+    if p1_movement == "R" and p2_movement == "S" and p3_movement == "L":
+        # output = [3, 2, 1]
+        output = [ground_truth[2], ground_truth[1], ground_truth[0]]
+    elif p1_movement == "R" and p2_movement == "L" and p3_movement == "S":
+        # output = [2, 1, 3]
+        output = [ground_truth[1], ground_truth[0], ground_truth[2]]
+    elif p1_movement == "R" and p2_movement == "L" and p3_movement == "L":
+        # output = [2, 3, 1]
+        output = [ground_truth[1], ground_truth[2], ground_truth[0]]
+    elif p1_movement == "S" and p2_movement == "R" and p3_movement == "L":
+        # output = [1, 3, 2]
+        output = [ground_truth[0], ground_truth[2], ground_truth[1]]
+    elif p1_movement == "S" and p2_movement == "L" and p3_movement == "S":
+        # output = [2, 1, 3]
+        output = [ground_truth[1], ground_truth[0], ground_truth[2]]
+    else:
+        # output = [1, 2, 3]
+        output = ground_truth
+
+    return (output)
 
 
 if __name__ == '__main__':
@@ -483,7 +535,10 @@ if __name__ == '__main__':
                    "78:DB:2F:BF:2C:E2": "", "1C:BA:8C:1D:30:22": ""}
     incoming_data_flag = {"50:F1:4A:CB:FE:EE": False,
                           "78:DB:2F:BF:2C:E2": False, "1C:BA:8C:1D:30:22": False}
-    ground_truth = ""
+    ground_truth = [1, 2, 3]
+    beetle_1 = "50:F1:4A:CB:FE:EE"
+    beetle_2 = "78:DB:2F:BF:2C:E2"
+    beetle_3 = "1C:BA:8C:1D:30:22"
     # data global variables
     num_datasets = 200
     beetle1_data_dict = {"50:F1:4A:CB:FE:EE": {}}
@@ -524,13 +579,13 @@ if __name__ == '__main__':
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle.append(0) for idx in range(len(beetle_addresses))]
-
+    """
     try:
         eval_client = eval_client.Client(
             "192.168.1.101", 8080, 6, "cg40024002group6")
     except Exception as e:
         print(e)
-
+    """
     """
     try:
         board_client = dashBoardClient.Client(
@@ -550,7 +605,7 @@ if __name__ == '__main__':
     time.sleep(2)
 
     establish_connection("1C:BA:8C:1D:30:22")
-
+    """
     # start collecting data only after 1 min passed
     while True:
         elapsed_time = time.time() - start_time
@@ -559,7 +614,10 @@ if __name__ == '__main__':
         else:
             print(elapsed_time)
             time.sleep(1)
-
+    """
+    for beetle in global_beetle:
+        print(beetle.addr)
+    emg_thread = EMGThread(global_beetle[3])
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
             {data_executor.submit(getDanceData, beetle)
@@ -590,6 +648,7 @@ if __name__ == '__main__':
         result = [worker.get() for worker in workers]
         pool.close()
         try:
+            # change to 1 if using emg beetle, 0 if not using
             for idx in range(0, len(result)):
                 for address in result[idx].keys():
                     if address == "50:F1:4A:CB:FE:EE":
@@ -637,6 +696,7 @@ if __name__ == '__main__':
         # print(beetle1_data_dict)
         # print(beetle2_data_dict)
         # print(beetle3_data_dict)
+        """
         with open(r'position.txt', 'a') as file:
             file.write(json.dumps(beetle1_moving_dict) + "\n")
             file.write(json.dumps(beetle2_moving_dict) + "\n")
@@ -647,8 +707,7 @@ if __name__ == '__main__':
             file.write(json.dumps(beetle2_dancing_dict) + "\n")
             file.write(json.dumps(beetle3_dancing_dict) + "\n")
             file.close()
-        print("change dance and position!")
-
+        """
         # synchronization delay
         try:
             beetle1_time_ultra96 = calculate_ultra96_time(
@@ -670,24 +729,50 @@ if __name__ == '__main__':
         # print("Beetle 3 ultra 96 time: ", beetle3_time_ultra96)
         print("Synchronization delay is: ", sync_delay)
 
-        """
         # machine learning
         # ml_result = get_prediction(beetle1_data_dict)
+        """
         ml_pool = multiprocessing.Pool()
-        workers = ml_pool.apply_async(get_prediction, args=(beetle1_data_dict, beetle2_data_dict, beetle3_data_dict, ground_truth))
+        workers = ml_pool.apply_async(get_prediction, args=(beetle1_moving_dict, beetle2_moving_dict,
+                                                            beetle3_moving_dict, beetle1_dancing_dict, beetle2_dancing_dict, beetle3_dancing_dict, ground_truth))
         ml_result = workers.get()
         ml_pool.close()
         """
 
-        ml_result = "shoutout123"
-        # send data to eval and dashboard server
+        # Load MLP NN model
+        mlp_dance = load('mlp_dance.joblib')
 
+        # Predict dance move of each beetle
+        beetle1_dance = predict_beetle_dance(beetle1_dancing_dict, mlp_dance)
+        beetle2_dance = predict_beetle_dance(beetle2_dancing_dict, mlp_dance)
+        beetle3_dance = predict_beetle_dance(beetle3_dancing_dict, mlp_dance)
+
+        dance = (most_frequent_prediction(dance_predictions))
+        print(dance)
+
+        # Load Movement ML
+        mlp_move = load('mlp_movement.joblib')
+
+        # Predict movement direction of each beetle
+        beetle1_move = predict_beetle(beetle1_moving_dict, mlp_move)
+        beetle2_move = predict_beetle(beetle2_moving_dict, mlp_move)
+        beetle3_move = predict_beetle(beetle3_moving_dict, mlp_move)
+
+        # Find new position
+        new_pos = find_new_position(
+            ground_truth, beetle1_move, beetle2_move, beetle3_move)
+        print(new_pos)
+        # print(ml_result)
+        # send data to eval and dashboard server
+        """
         eval_pool = multiprocessing.Pool()
         workers = eval_pool.apply_async(
             eval_client.send_data, args=("1 2 3", ml_result, str(sync_delay)))
         eval_pool.close()
-        ground_truth = eval_client.receive_dancer_position()
-
+        ground_truth = eval_client.receive_dancer_position().split(' ')
+        ground_truth = [int(ground_truth[0]), int(
+            ground_truth[1]), int(ground_truth[2])]
+        """
         """
         board_pool = multiprocessing.Pool()
         workers = board_pool.apply_async(
