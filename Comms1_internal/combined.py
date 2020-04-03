@@ -130,53 +130,55 @@ class EMGThread(object):
 
 
 def initHandshake(beetle):
-    ultra96_sending_timestamp = time.time() * 1000
-    incoming_data_flag[beetle.addr] = True
-    handshake_flag_dict[beetle.addr] = True
-    for characteristic in beetle.getCharacteristics():
-        if characteristic.uuid == UUIDS.SERIAL_COMMS:
-            ultra96_sending_timestamp = time.time() * 1000
-            timestamp_dict[beetle.addr].append(
-                ultra96_sending_timestamp)
-            print("Sending 'T' and 'H' and 'Z' packets to %s" % (beetle.addr))
-            characteristic.write(
-                bytes('T', 'UTF-8'), withResponse=False)
-            characteristic.write(
-                bytes('H', 'UTF-8'), withResponse=False)
-            characteristic.write(
-                bytes('Z', 'UTF-8'), withResponse=False)
-            while True:
-                try:
-                    if beetle.waitForNotifications(2):
-                        if clocksync_flag_dict[beetle.addr] is True:
-                            # function for time calibration
-                            try:
-                                clock_offset_dict[beetle.addr].append(calculate_clock_offset(
-                                    timestamp_dict[beetle.addr]))
-                            except Exception as e:
-                                clock_offset_dict[beetle.addr].append(
-                                    calculate_clock_offset([0, 0, 0, 0]))
-                            timestamp_dict[beetle.addr].clear()
-                            print("beetle %s clock offset: %i" %
-                                  (beetle.addr, clock_offset_dict[beetle.addr][-1]))
-                            clocksync_flag_dict[beetle.addr] = False
-                            incoming_data_flag[beetle.addr] = False
-                            return
+    if beetle.addr != "50:F1:4A:CC:01:C4":
+        ultra96_sending_timestamp = time.time() * 1000
+        incoming_data_flag[beetle.addr] = True
+        handshake_flag_dict[beetle.addr] = True
+        for characteristic in beetle.getCharacteristics():
+            if characteristic.uuid == UUIDS.SERIAL_COMMS:
+                ultra96_sending_timestamp = time.time() * 1000
+                timestamp_dict[beetle.addr].append(
+                    ultra96_sending_timestamp)
+                print("Sending 'T' and 'H' and 'Z' packets to %s" % (beetle.addr))
+                characteristic.write(
+                    bytes('T', 'UTF-8'), withResponse=False)
+                characteristic.write(
+                    bytes('H', 'UTF-8'), withResponse=False)
+                characteristic.write(
+                    bytes('Z', 'UTF-8'), withResponse=False)
+                while True:
+                    try:
+                        if beetle.waitForNotifications(2):
+                            if clocksync_flag_dict[beetle.addr] is True:
+                                # function for time calibration
+                                print(timestamp_dict[beetle.addr])
+                                try:
+                                    clock_offset_dict[beetle.addr].append(calculate_clock_offset(
+                                        timestamp_dict[beetle.addr]))
+                                except Exception as e:
+                                    clock_offset_dict[beetle.addr].append(
+                                        calculate_clock_offset([0, 0, 0, 0]))
+                                timestamp_dict[beetle.addr].clear()
+                                print("beetle %s clock offset: %i" %
+                                    (beetle.addr, clock_offset_dict[beetle.addr][-1]))
+                                clocksync_flag_dict[beetle.addr] = False
+                                incoming_data_flag[beetle.addr] = False
+                                return
+                            else:
+                                continue
                         else:
-                            continue
-                    else:
-                        print(
-                            "Failed to receive timestamp, sending 'Z', 'T', 'H', and 'R' packet to %s" % (beetle.addr))
-                        characteristic.write(
-                            bytes('R', 'UTF-8'), withResponse=False)
-                        characteristic.write(
-                            bytes('T', 'UTF-8'), withResponse=False)
-                        characteristic.write(
-                            bytes('H', 'UTF-8'), withResponse=False)
-                        characteristic.write(
-                            bytes('Z', 'UTF-8'), withResponse=False)
-                except Exception as e:
-                    reestablish_connection(beetle)
+                            print(
+                                "Failed to receive timestamp, sending 'Z', 'T', 'H', and 'R' packet to %s" % (beetle.addr))
+                            characteristic.write(
+                                bytes('R', 'UTF-8'), withResponse=False)
+                            characteristic.write(
+                                bytes('T', 'UTF-8'), withResponse=False)
+                            characteristic.write(
+                                bytes('H', 'UTF-8'), withResponse=False)
+                            characteristic.write(
+                                bytes('Z', 'UTF-8'), withResponse=False)
+                    except Exception as e:
+                        reestablish_connection(beetle)
 
 
 def establish_connection(address):
@@ -523,7 +525,7 @@ if __name__ == '__main__':
     beetle_addresses = ["50:F1:4A:CC:01:C4", "50:F1:4A:CB:FE:EE", "78:DB:2F:BF:2C:E2",
                         "1C:BA:8C:1D:30:22"]
     """
-    beetle_addresses = ["50:F1:4A:CB:FE:EE", "78:DB:2F:BF:2C:E2",
+    beetle_addresses = ["50:F1:4A:CC:01:C4", "50:F1:4A:CB:FE:EE", "78:DB:2F:BF:2C:E2",
                         "1C:BA:8C:1D:30:22"]
     divide_get_float = 100.0
     global_delegate_obj = []
@@ -593,10 +595,9 @@ if __name__ == '__main__':
     except Exception as e:
         print(e)
     """
-    """
+
     establish_connection("50:F1:4A:CC:01:C4")
     time.sleep(2)
-    """
 
     establish_connection("78:DB:2F:BF:2C:E2")
     time.sleep(2)
@@ -749,9 +750,9 @@ if __name__ == '__main__':
         beetle2_dance = predict_beetle_dance(beetle2_dancing_dict, mlp_dance)
         beetle3_dance = predict_beetle_dance(beetle3_dancing_dict, mlp_dance)
 
-        dance = (most_frequent_prediction(dance_predictions))
+        dance = (most_frequent_prediction(
+            [beetle1_dance, beetle2_dance, beetle3_dance]))
         print(dance)
-
 
         # Predict movement direction of each beetle
         beetle1_move = predict_beetle_dance(beetle1_moving_dict, mlp_move)
@@ -774,8 +775,9 @@ if __name__ == '__main__':
             ground_truth[1]), int(ground_truth[2])]
         """
         """
+        final_string = dance + " " + str(new_pos[0]) + " " + str(new_pos[1]) + " " + str(new_pos[2])
         board_pool = multiprocessing.Pool()
         workers = board_pool.apply_async(
-            board_client.send_data_to_DB, args=("MLDancer1", ml_result))
+            board_client.send_data_to_DB, args=("MLDancer1", final_string))
         board_pool.close()
         """
