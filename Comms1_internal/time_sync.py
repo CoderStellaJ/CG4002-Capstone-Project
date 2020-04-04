@@ -5,16 +5,43 @@ def calculate_clock_offset(beetle_timestamp_list):
         return clock_offset
     else:
         print("error in beetle timestamp")
+        return None
+
+
+def most_frequent(List):
+    if len(List) == 0:
+        print("Dance data is empty")
+        return None
+    else: 
+        return max(set(List), key = List.count) 
+
 
 def calculate_ultra96_time(beetle_data_dict, clock_offset):
     time_ultra96 = 0
+    value_list = []  # keeps the first 5 values
+    count = 0
     for address in beetle_data_dict:
         for key in beetle_data_dict[address]:
-            data_list = beetle_data_dict[address][key]
-            time_beetle = data_list[0]
-            if(time_beetle != 1):
-                time_ultra96 = time_beetle - clock_offset
-                return time_ultra96
+            value_list.append(beetle_data_dict[address][key])
+            count += 1
+            if count >= 5:
+                break
+    
+    time_beetle = most_frequent(value_list)
+    if time_beetle is None:
+        return None
+    else:
+        time_ultra96 = time_beetle - clock_offset
+        return time_ultra96
+
+
+def calculate_sync_delay(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96):
+    if beetle1_time_ultra96 is not None and beetle2_time_ultra96 is not None and beetle3_time_ultra96 is not None:
+        sync_delay = max(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96) - min(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96)
+    elif beetle3_time_ultra96 is None or beetle2_time_ultra96 is None or beetle3_time_ultra96 is None:
+        sync_delay = 1250
+    return sync_delay
+
 
 
 

@@ -11,6 +11,8 @@ from joblib import dump, load
 import numpy  # to count labels and store in dict
 import operator  # to get most predicted label
 import json
+import random  # RNG in worst case
+from sklearn.preprocessing import StandardScaler  # to normalise data
 
 
 class UUIDS:
@@ -35,7 +37,7 @@ class Delegate(btle.DefaultDelegate):
                     if '>' in data.decode('ISO-8859-1'):
                         print("sending emg dataset to dashboard")
                         packet_count_dict[beetle_addresses[idx]] += 1
-                        """
+                        
                         try:
                             arr = emg_buffer[beetle_addresses[idx]].split(">")[
                                 0]
@@ -45,7 +47,10 @@ class Delegate(btle.DefaultDelegate):
                             emg_buffer[beetle_addresses[idx]] = ""
                         except Exception as e:
                             print(e)
-                        """
+                            board_client.send_data_to_DB(
+                                beetle_addresses[idx], str(["1", "1", "1", "1"]))
+                            emg_buffer[beetle_addresses[idx]] = ""
+                        
                 else:
                     if incoming_data_flag[beetle_addresses[idx]] is True:
                         if handshake_flag_dict[beetle_addresses[idx]] is True:
@@ -96,10 +101,10 @@ class Delegate(btle.DefaultDelegate):
                             else:
                                 buffer_dict[beetle_addresses[idx]
                                             ] += data.decode('ISO-8859-1')
-                            """
-                            # send data to dashboard once every 10 datasets
+                            
+                            # send data to dashboard once every 20 datasets
                             try:
-                                if packet_count_dict[beetle_addresses[idx]] % 10 == 0 and '>' in data.decode('ISO-8859-1'):
+                                if packet_count_dict[beetle_addresses[idx]] % 20 == 0 and '>' in data.decode('ISO-8859-1'):
                                     print("sending data to dashboard")
                                     first_string = buffer_dict[beetle_addresses[idx]].split("|")[
                                         0]
@@ -111,7 +116,7 @@ class Delegate(btle.DefaultDelegate):
                                         beetle_addresses[idx], str(final_arr))
                             except Exception as e:
                                 print(e)
-                            """
+                            
 
 
 """
@@ -156,12 +161,13 @@ def initHandshake(beetle):
                             if clocksync_flag_dict[beetle.addr] is True:
                                 # function for time calibration
                                 try:
-                                    clock_offset_dict[beetle.addr].append(calculate_clock_offset(
-                                        timestamp_dict[beetle.addr]))
+                                    clock_offset_tmp = calculate_clock_offset(timestamp_dict[beetle.addr])
+                                    tmp_value_list = []
+                                    if clock_offset_tmp is not None:
+                                        tmp_value_list.append(clock_offset_tmp)
+                                        clock_offset_dict[beetle.addr] = tmp_value_list
                                 except Exception as e:
                                     print(e)
-                                    clock_offset_dict[beetle.addr].append(
-                                        calculate_clock_offset([0, 0, 0, 0]))
                                 timestamp_dict[beetle.addr].clear()
                                 print("beetle %s clock offset: %i" %
                                       (beetle.addr, clock_offset_dict[beetle.addr][-1]))
@@ -216,7 +222,7 @@ def establish_connection(address):
                 if beetle_addresses[idx] == address:
                     if global_beetle[idx] != 0:  # do not reconnect if already connected
                         return
-            time.sleep(1)
+            time.sleep(3)
 
 
 def reestablish_connection(beetle):
@@ -270,7 +276,7 @@ def getDanceData(beetle):
                                 return
                             continue
                         # beetle finish transmitting, but got packet losses
-                        elif packet_count_dict[beetle.addr] < num_datasets:
+                        elif (packet_count_dict[beetle.addr] < num_datasets) and (packet_count_dict[beetle.addr] >= 1):
                             print(packet_count_dict[beetle.addr])
                             print("sufficient datasets received from %s with packet losses. Processing data now" % (
                                 beetle.addr))
@@ -284,7 +290,7 @@ def getDanceData(beetle):
                                     bytes('Z', 'UTF-8'), withResponse=False)
                                 retries += 1
                             return
-                        elif timeout_count >= 2:
+                        elif timeout_count >= 3:
                             incoming_data_flag[beetle.addr] = False
                             packet_count_dict[beetle.addr] = 0
                             timeout_count = 0
@@ -326,7 +332,7 @@ def getEMGData(beetle):
             while True:
                 try:
                     if beetle.waitForNotifications(2):
-                        if packet_count_dict[beetle.addr] >= 5:
+                        if packet_count_dict[beetle.addr] >= 1:
                             packet_count_dict[beetle.addr] = 0
                             retries = 0
                             while True:
@@ -481,7 +487,7 @@ def parse_data(dic_data, beetle):
     return (data)
 
 
-def predict_beetle_dance(beetle_data, model):
+def predict_beetle(beetle_data, model):
     pred_arr = model.predict(beetle_data)
     unique, counts = numpy.unique(pred_arr, return_counts=True)
     pred_count = dict(zip(unique, counts))
@@ -526,7 +532,32 @@ def find_new_position(ground_truth, b1_move, b2_move, b3_move):
         # output = [1, 2, 3]
         output = ground_truth
 
-    return (output)
+    position = str(output[0]) + " " + str(output[1]) + " " + str(output[2])
+    return position
+
+
+def eval_1beetle(beetle_dict_1, beetle_1):
+    # Get beetle data from dictionaries
+    beetle1_data = parse_data(beetle_dict_1, beetle_1)
+    # Predict dance move of each beetle
+    #beetle1_dance = predict_beetle(beetle1_data, mlp_dance)
+    pred_arr = mlp_dance.predict(beetle1_data)
+    unique, counts = numpy.unique(pred_arr, return_counts=True)
+    pred_count = dict(zip(unique, counts))
+    beetle1_dance = max(pred_count.items(), key=operator.itemgetter(1))[0]
+
+    return beetle1_dance
+
+
+def normalise_data(data):
+    try:
+        scaler = StandardScaler()
+        scaler.fit(data)
+        data = scaler.transform(data)
+
+        return data
+    except Exception as e:
+        return data
 
 
 if __name__ == '__main__':
@@ -550,9 +581,13 @@ if __name__ == '__main__':
     incoming_data_flag = {"50:F1:4A:CB:FE:EE": False,
                           "78:DB:2F:BF:2C:E2": False, "1C:BA:8C:1D:30:22": False}
     ground_truth = [1, 2, 3]
-    beetle_1 = "50:F1:4A:CB:FE:EE"
-    beetle_2 = "78:DB:2F:BF:2C:E2"
-    beetle_3 = "1C:BA:8C:1D:30:22"
+    ACTIONS = ['muscle', 'weightlifting', 'shoutout']
+    POSITIONS = ['1 2 3', '3 2 1', '2 3 1', '3 1 2', '1 3 2', '2 1 3']
+    beetle1 = "50:F1:4A:CB:FE:EE"
+    beetle2 = "78:DB:2F:BF:2C:E2"
+    beetle3 = "1C:BA:8C:1D:30:22"
+    dance = "shoutout"
+    new_pos = "1 2 3"
     # data global variables
     num_datasets = 200
     beetle1_data_dict = {"50:F1:4A:CB:FE:EE": {}}
@@ -593,45 +628,46 @@ if __name__ == '__main__':
 
     [global_delegate_obj.append(0) for idx in range(len(beetle_addresses))]
     [global_beetle.append(0) for idx in range(len(beetle_addresses))]
-    
+
     try:
         eval_client = eval_client.Client(
             "192.168.43.6", 8080, 6, "cg40024002group6")
     except Exception as e:
         print(e)
 
-    """
+    
     try:
         board_client = dashBoardClient.Client(
             "192.168.43.248", 8080, 6, "cg40024002group6")
     except Exception as e:
         print(e)
-    """
-
+    
     establish_connection("50:F1:4A:CC:01:C4")
     time.sleep(2)
 
     establish_connection("78:DB:2F:BF:2C:E2")
-
+    time.sleep(3)
     # Load MLP NN model
-    mlp_dance = load('mlp_dance.joblib')
+    mlp_dance = load('mlp_dance_LATEST.joblib')
 
     establish_connection("50:F1:4A:CB:FE:EE")
-    time.sleep(2)
+    time.sleep(3)
 
     # Load Movement ML
-    mlp_move = load('mlp_movement.joblib')
+    mlp_move = load('mlp_movement_LATEST.joblib')
 
     establish_connection("1C:BA:8C:1D:30:22")
-
+    
     with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
-        data_executor.submit(getEMGData, global_beetle[0])
-        data_executor.shutdown(wait=True)
-
+        for beetle in global_beetle:
+            if beetle.addr == "50:F1:4A:CC:01:C4":
+                data_executor.submit(getEMGData, beetle)
+                data_executor.shutdown(wait=True)
+    
     # start collecting data only after 1 min passed
     while True:
         elapsed_time = time.time() - start_time
-        if int(elapsed_time) == 60:
+        if int(elapsed_time) >= 60:
             break
         else:
             print(elapsed_time)
@@ -644,8 +680,7 @@ if __name__ == '__main__':
     """
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
-            {data_executor.submit(getDanceData, beetle)
-                                  : beetle for beetle in global_beetle}
+            {data_executor.submit(getDanceData, beetle): beetle for beetle in global_beetle}
             data_executor.shutdown(wait=True)
         """
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as data_executor:
@@ -653,18 +688,17 @@ if __name__ == '__main__':
             data_executor.shutdown(wait=True)
         """
         # do calibration once every 4 moves; change 4 to other values according to time calibration needs
+        """
         if dance_count == 1:
             print("Proceed to do time calibration...")
             # clear clock_offset_dict for next time calibration
-            for address in clock_offset_dict.keys():
-                clock_offset_dict[address].clear()
             for beetle in global_beetle:
                 if beetle.addr != "50:F1:4A:CC:01:C4":
                     initHandshake(beetle)
         if dance_count == 1:
             dance_count = 0
         dance_count += 1
-
+        """
         pool = multiprocessing.Pool()
         workers = [pool.apply_async(processData, args=(address, ))
                    for address in beetle_addresses]
@@ -719,7 +753,7 @@ if __name__ == '__main__':
         # print(beetle1_data_dict)
         # print(beetle2_data_dict)
         # print(beetle3_data_dict)
-        """
+
         with open(r'position.txt', 'a') as file:
             file.write(json.dumps(beetle1_moving_dict) + "\n")
             file.write(json.dumps(beetle2_moving_dict) + "\n")
@@ -730,7 +764,7 @@ if __name__ == '__main__':
             file.write(json.dumps(beetle2_dancing_dict) + "\n")
             file.write(json.dumps(beetle3_dancing_dict) + "\n")
             file.close()
-        """
+
         # synchronization delay
         try:
             beetle1_time_ultra96 = calculate_ultra96_time(
@@ -742,10 +776,12 @@ if __name__ == '__main__':
             beetle3_time_ultra96 = calculate_ultra96_time(
                 beetle3_dancing_dict, clock_offset_dict["1C:BA:8C:1D:30:22"][0])
 
-            sync_delay = max(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96) - \
-                min(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96)
+            sync_delay = calculate_sync_delay(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96)
+            
         except Exception as e:
-            sync_delay = 4123
+            print(e)
+            print("use default sync delay")
+            sync_delay = 950
 
         # print("Beetle 1 ultra 96 time: ", beetle1_time_ultra96)
         # print("Beetle 2 ultra 96 time: ", beetle2_time_ultra96)
@@ -755,55 +791,93 @@ if __name__ == '__main__':
         # machine learning
         # ml_result = get_prediction(beetle1_data_dict)
         """
-        ml_pool = multiprocessing.Pool()
-        workers = ml_pool.apply_async(get_prediction, args=(beetle1_moving_dict, beetle2_moving_dict,
-                                                            beetle3_moving_dict, beetle1_dancing_dict, beetle2_dancing_dict, beetle3_dancing_dict, ground_truth))
-        ml_result = workers.get()
-        ml_pool.close()
         """
 
-        # Get beetle data from dictionaries in arguments
-        beetle1_dancing_dict = parse_data(beetle1_dancing_dict, beetle_1)
-        beetle2_dancing_dict = parse_data(beetle2_dancing_dict, beetle_2)
-        beetle3_dancing_dict = parse_data(beetle3_dancing_dict, beetle_3)
-        beetle1_moving_dict = parse_data(beetle1_moving_dict, beetle_1)
-        beetle2_moving_dict = parse_data(beetle2_moving_dict, beetle_2)
-        beetle3_moving_dict = parse_data(beetle3_moving_dict, beetle_3)
+        beetle1_moving_dict = parse_data(beetle1_moving_dict, beetle1)
+        beetle2_moving_dict = parse_data(beetle2_moving_dict, beetle2)
+        beetle3_moving_dict = parse_data(beetle3_moving_dict, beetle3)
 
-        # Predict dance move of each beetle
-        beetle1_dance = predict_beetle_dance(beetle1_dancing_dict, mlp_dance)
-        beetle2_dance = predict_beetle_dance(beetle2_dancing_dict, mlp_dance)
-        beetle3_dance = predict_beetle_dance(beetle3_dancing_dict, mlp_dance)
-
-        dance = (most_frequent_prediction(
-            [beetle1_dance, beetle2_dance, beetle3_dance]))
-        print(dance)
+        beetle1_moving_dict = normalise_data(beetle1_moving_dict)
+        beetle2_moving_dict = normalise_data(beetle2_moving_dict)
+        beetle3_moving_dict = normalise_data(beetle3_moving_dict)
 
         # Predict movement direction of each beetle
-        beetle1_move = predict_beetle_dance(beetle1_moving_dict, mlp_move)
-        beetle2_move = predict_beetle_dance(beetle2_moving_dict, mlp_move)
-        beetle3_move = predict_beetle_dance(beetle3_moving_dict, mlp_move)
+        try:
+            beetle1_move = predict_beetle(beetle1_moving_dict, mlp_move)
+        except Exception as e:
+            beetle1_move = 'S'
+        try:
+            beetle2_move = predict_beetle(beetle2_moving_dict, mlp_move)
+        except Exception as e:
+            beetle2_move = 'S'
+        try:
+            beetle3_move = predict_beetle(beetle3_moving_dict, mlp_move)
+        except Exception as e:
+            beetle3_move = 'S'
 
         # Find new position
         new_pos = find_new_position(
             ground_truth, beetle1_move, beetle2_move, beetle3_move)
-        print(new_pos)
-        # print(ml_result)
-        # send data to eval and dashboard server
 
-        eval_pool = multiprocessing.Pool()
-        workers = eval_pool.apply_async(
-            eval_client.send_data, args=("1 2 3", ml_result, str(sync_delay)))
-        eval_pool.close()
+        # PREDICT DANCE
+        if beetle1_dancing_dict[beetle1] and beetle2_dancing_dict[beetle2] and beetle3_dancing_dict[beetle3]:
+            # Get DANCE data from dictionaries in arguments
+            beetle1_dance_data = parse_data(beetle1_dancing_dict, beetle1)
+            beetle2_dance_data = parse_data(beetle2_dancing_dict, beetle2)
+            beetle3_dance_data = parse_data(beetle3_dancing_dict, beetle3)
+            # print(beetle1_data)
+
+            # Normalise DANCE data
+            beetle1_dance_data_norm = normalise_data(beetle1_dance_data)
+            beetle2_dance_data_norm = normalise_data(beetle2_dance_data)
+            beetle3_dance_data_norm = normalise_data(beetle3_dance_data)
+            # print(beetle1_data_norm)
+
+            # Predict DANCE of each beetle
+            beetle1_dance = predict_beetle(beetle1_dance_data_norm, mlp_dance)
+            beetle2_dance = predict_beetle(beetle2_dance_data_norm, mlp_dance)
+            beetle3_dance = predict_beetle(beetle3_dance_data_norm, mlp_dance)
+            # print(beetle1_dance)
+
+            dance_predictions = [beetle1_dance, beetle2_dance, beetle3_dance]
+
+            dance = most_frequent_prediction(dance_predictions)
+
+        elif beetle2_dancing_dict[beetle2] and beetle3_dancing_dict[beetle3]:
+            dance = eval_1beetle(beetle2_dancing_dict, beetle2)
+
+        elif beetle1_dancing_dict[beetle1] and beetle3_dancing_dict[beetle3]:
+            dance = eval_1beetle(beetle1_dancing_dict, beetle1)
+
+        elif beetle1_dancing_dict[beetle1] and beetle2_dancing_dict[beetle2]:
+            dance = eval_1beetle(beetle1_dancing_dict, beetle1)
+
+        elif beetle1_dancing_dict[beetle1]:
+            dance = eval_1beetle(beetle1_dancing_dict, beetle1)
+
+        elif beetle2_dancing_dict[beetle2]:
+            dance = eval_1beetle(beetle2_dancing_dict, beetle2)
+
+        elif beetle3_dancing_dict[beetle3]:
+            dance = eval_1beetle(beetle3_dancing_dict, beetle3)
+
+        else:
+            # RNG
+            dance = random.choice(ACTIONS)
+
+        print(dance)
+        print(new_pos)
+        # send data to eval and dashboard server
+        eval_client.send_data(new_pos, dance, str(sync_delay))
         ground_truth = eval_client.receive_dancer_position().split(' ')
         ground_truth = [int(ground_truth[0]), int(
             ground_truth[1]), int(ground_truth[2])]
+        final_string = dance + " " + new_pos
+        board_client.send_data_to_DB("MLDancer1", final_string)
 
-        """
-        final_string = dance + " " + \
-            str(new_pos[0]) + " " + str(new_pos[1]) + " " + str(new_pos[2])
-        board_pool = multiprocessing.Pool()
-        workers = board_pool.apply_async(
-            board_client.send_data_to_DB, args=("MLDancer1", final_string))
-        board_pool.close()
-        """
+        beetle1_moving_dict = {"50:F1:4A:CB:FE:EE": {}}
+        beetle2_moving_dict = {"78:DB:2F:BF:2C:E2": {}}
+        beetle3_moving_dict = {"1C:BA:8C:1D:30:22": {}}
+        beetle1_dancing_dict = {"50:F1:4A:CB:FE:EE": {}}
+        beetle2_dancing_dict = {"78:DB:2F:BF:2C:E2": {}}
+        beetle3_dancing_dict = {"1C:BA:8C:1D:30:22": {}}
