@@ -116,6 +116,8 @@ import numpy as np
 from collections import deque
 #testing
 if __name__ == '__main__':
+
+    addValue('MLDancer1', "-")
     #createTable("MLDancer1", "Dancer1")
     ##6 Beetles---------> Yaw,pitch,roll,X-Axis,Y-Axis,Z-Axis
     ##EMG ------------> mean amplitude(MeanAmp),root mean square amplitude(RMSAmp) mean frequency(MeanFreq)
@@ -127,20 +129,21 @@ if __name__ == '__main__':
     ##EMG
     #processDatabase()
     #https://neutrium.net/mathematics/least-squares-fitting-of-a-polynomial/
-    index = [1,2,3,4,5]
-    data = [1,2,3,4,5]
-    coeffs = np.polyfit(index,list(data), 1)
-    slope = coeffs[-2]
-    print(float(slope))
-    
-
-    deq = deque(maxlen =5)
-    for i in data:
-        deq.append(i)
-    print (deq)
-    print(list(deq))
-    x = list(deq)
-    print(x[-2:])
+##    index = [1,2,3,4,5]
+##    data = [1.0,1.00000000001,1.0000005,1.0000002,1.0002]
+##    coeffs = np.polyfit(index,list(data), 1)
+##    slope = coeffs[-2]
+##    print(float(slope))
+##    
+##    
+##
+##    deq = deque(maxlen =5)
+##    for i in data:
+##        deq.append(i)
+##    print (deq)
+##    print(list(deq))
+##    x = list(deq)
+##    print(x[-2:])
     
     #change()
     #fakeData("Dancer1")
