@@ -41,7 +41,7 @@ void setup() {
 
 // the loop routine runs over and over again forever:
 void loop() {
-  double meanFrequency = 0;
+  float meanFrequency = 0;
   long long powerSpectrum = 0;
   long long powerSpectrumAndFreq = 0;
   
@@ -111,21 +111,14 @@ void loop() {
   // Computing the root mean square of the amplitude
   meanSquaredValue = meanSquaredValue / (SAMPLES * 1.0);
   rmsAmplitude = sqrt(meanSquaredValue);
-  char maxAmplitude_arr[5];
-  char meanAmplitude_arr[5];
-  char rmsAmplitude_arr[5];
-  char meanFrequency_arr[5];
-  dtostrf(maxAmplitude, 5, 2, maxAmplitude_arr);
-  dtostrf(meanAmplitude, 5, 2, meanAmplitude_arr);
-  dtostrf(rmsAmplitude, 5, 2, rmsAmplitude_arr);
-  dtostrf(meanFrequency, 5, 2, meanFrequency_arr);
-  Serial.print(maxAmplitude_arr);
+
+  Serial.print(maxAmplitude);
   Serial.print(',');
-  Serial.print(meanAmplitude_arr);
+  Serial.print(meanAmplitude);
   Serial.print(',');
-  Serial.print(rmsAmplitude_arr);
+  Serial.print(rmsAmplitude);
   Serial.print(',');
-  Serial.print(meanFrequency_arr);
+  Serial.print(meanFrequency);
   Serial.print('>');
   delay(128);
 }

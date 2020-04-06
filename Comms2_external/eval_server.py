@@ -225,6 +225,7 @@ def main():
     action_display = add_display_label(display_window, label=str(my_server.action))
     position_display = add_display_label(display_window, label=str(my_server.position))
     display_window.update()
+    current_idx = 0
     while my_server.idx <= my_server.n_moves + 1 and not my_server.shutdown.is_set():  # Display new task
         if my_server.idx == my_server.n_moves + 1:
             action_display.config(text=str(my_server.idx) + ":" + 'logout')
@@ -234,6 +235,12 @@ def main():
         else:
             action_display.config(text=str(my_server.idx) + ":" + str(my_server.action))
             position_display.config(text=' '.join(my_server.dancer_positions))
+            print("action: ", my_server.action, " position: ", my_server.dancer_positions)
+            if my_server.action != None and my_server.idx != current_idx:
+                with open('labels.txt', 'a') as label_file:
+                    line_file = my_server.action + " " + my_server.dancer_positions + "\n"
+                    label_file.write(line_file)
+                    current_idx = my_server.idx
         display_window.update()
         time.sleep(0.2)
 
