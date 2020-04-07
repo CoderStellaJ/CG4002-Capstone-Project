@@ -7,7 +7,7 @@ To run code:
 ### dashboardServer.py
 ###### *Contains code for a server that receives information from client.py*
 To run code:
-`python dashboardServer.py`
+`python dashboardServer.py` <add IP>
 
 ### dbAPI.py
 ###### *Contains an API for server to allow dashboardServer to communicated with postgreSQL*

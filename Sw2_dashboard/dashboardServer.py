@@ -66,18 +66,17 @@ class Server(threading.Thread):
     def run(self):
         while not self.shutdown.is_set():
             data = self.connection.recv(1024)
-
             if data:
                 try:
                     message = self.decrypt_message(data)
+                    #print(message)
                     if(message != ""):
-                        
                         splitStr = message.split(' | ')
                         print(splitStr)
                         try:
                             table = ''
                             #Position 1
-                            if(splitStr[0] == "78:DB:2F:BF:3F:63"):
+                            if(splitStr[0] == "50:F1:4A:CB:FE:EE"):
                                 table = "Beetle1"
                                 dataPoint = eval(splitStr[1])
                                 addValue(table, dataPoint[1], dataPoint[2],dataPoint[3],dataPoint[4],dataPoint[5],dataPoint[6])
@@ -95,36 +94,23 @@ class Server(threading.Thread):
                                 addValue(table, dataPoint[1], dataPoint[2],dataPoint[3],dataPoint[4],dataPoint[5],dataPoint[6])
 
                             #Emg Data
-                            elif(splitStr[0] == "EMG"):
+                            elif(splitStr[0] == "50:F1:4A:CC:01:C4"):
+                                print("received: " + splitStr[0])
                                 dataPoint = eval(splitStr[1])
+                                print("eval: " + str(dataPoint))
                                 table = "EMG"
-                                addValue(table,dataPoint[1], dataPoint[2],dataPoint[3],dataPoint[4])
+                                addValue(table, dataPoint[0], dataPoint[1],dataPoint[2],dataPoint[3])
                             
                             #Machine Learning Output
                             elif(splitStr[0] == "MLDancer1"):
                                 print(splitStr)
                                 addValue("MLDancer1", splitStr[1])
                                 print("completes function")
+                                
                         except Exception as e:
                             print("Error:" + splitStr + "Error Message: " +  str(e))
                 except Exception as e:
-                    print("Data failure: " + str(e))
-                        
-
-                    
-                    
-                    
-                    
-                
-                ##get the message and store the last value
-                #49 - [1] = YAW, [2] = PITCH, [3] = ROLL
-                #2 Beetles
-                #print(self.decrypt_message(data))
-                #addValue("testTable", obj['position'],obj['action'],str((float(obj['sync']) + self.i)))
-                #self.i += 1.0 # generate a random value
-
-                #set a timer of every 5s change a dance move
-                
+                    print("Data failure from: " + str(e) )
 
             else:
                 print('no more data from', self.client_address, file=sys.stderr)
