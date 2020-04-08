@@ -59,9 +59,9 @@ class Delegate(btle.DefaultDelegate):
                             if '>' not in data.decode('ISO-8859-1'):
                                 pass
                             else:
-                                if 'A' in buffer_dict[beetle_addresses[idx]]:
+                                if 'T' in buffer_dict[beetle_addresses[idx]]:
                                     for char in buffer_dict[beetle_addresses[idx]]:
-                                        if char == 'A':
+                                        if char == 'T':
                                             ultra96_receiving_timestamp = time.time() * 1000
                                             continue
                                         if char == '>':  # end of packet
@@ -248,10 +248,8 @@ def getDanceData(beetle):
                     if retries >= 10:
                         retries = 0
                         break
-                    """
                     print(
                         "sending 'A' to beetle %s to collect dancing data", (beetle.addr))
-                    """
                     characteristic.write(
                         bytes('A', 'UTF-8'), withResponse=False)
                     retries += 1
@@ -303,10 +301,8 @@ def getDanceData(beetle):
                                 if retries >= 10:
                                     retries = 0
                                     break
-                                """
                                 print(
                                     "Failed to receive data, resending 'A' and 'B' packet to %s" % (beetle.addr))
-                                """
                                 characteristic.write(
                                     bytes('A', 'UTF-8'), withResponse=False)
                                 characteristic.write(

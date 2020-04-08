@@ -172,7 +172,7 @@ void receiveHandshakeAndClockSync()
     if (Serial.available() && Serial.read() == 'T') { // need to do time calibration
       while (1) {
         if (Serial.available() && Serial.read() == 'H') {
-          Serial.print('A');
+          Serial.print('T');
           tmp_recv_timestamp = millis();
           Serial.print(tmp_recv_timestamp);
           break;
@@ -186,7 +186,7 @@ void receiveHandshakeAndClockSync()
         if (Serial.available() && Serial.read() == 'A') { // ultra96 received timestamp
           break;
         } else if (Serial.available() && Serial.read() == 'R') { // retransmit timestamp as ultra96 did not receive it
-          Serial.print('A');
+          Serial.print('T');
           Serial.print(tmp_recv_timestamp);
           Serial.print('|');
           Serial.print(tmp_send_timestamp);
@@ -255,20 +255,6 @@ void loop() {
         accelYDiffSum += accelDiff[j][1];
         accelZDiffSum += accelDiff[j][2];
       }
-      /*
-        Serial.print("ypr and accel diff: ");
-        Serial.print(yawDiffSum);
-        Serial.print("\t");
-        Serial.print(pitchDiffSum);
-        Serial.print("\t");
-        Serial.print(rollDiffSum);
-        Serial.print("\t");
-        Serial.print(accelXDiffSum);
-        Serial.print("\t");
-        Serial.print(accelYDiffSum);
-        Serial.print("\t");
-        Serial.println(accelZDiffSum);
-      */
       if (tmp > 40 && !setOnce && (abs(yawDiffSum) <= 10 || abs(pitchDiffSum) <= 10 || abs(rollDiffSum) <= 10) && (abs(accelXDiffSum) <= 2000 || abs(accelYDiffSum) <= 2000 || abs(accelZDiffSum) <= 2000)) {
         stoppedMoving = true;
       }
@@ -277,8 +263,6 @@ void loop() {
         stoppedMoving = false;
         setOnce = true;
         timestamp = millis();
-
-        //Serial.println("EXCEED THRESHOLD");
       }
 
       int chksum = 0;
