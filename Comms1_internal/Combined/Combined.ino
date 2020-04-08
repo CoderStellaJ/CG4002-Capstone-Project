@@ -152,7 +152,7 @@ void setup() {
     // 2 = DMP configuration updates failed
     // (if it's going to break, usually the code will be 1)
   }
-  receiveHandshakeAndClockSync();
+  //receiveHandshakeAndClockSync();
 }
 
 void receiveHandshakeAndClockSync()
@@ -192,10 +192,11 @@ void receiveHandshakeAndClockSync()
 }
 
 void loop() {
+  receiveHandshakeAndClockSync();
   while (1) {
     // Get the initial timestamp of this new dance move
     timestamp = millis();
-    for (int i = 0; i < 160; i++) {
+    for (int i = 0; i < 10; i++) {
       if (getYPR_worldAccel() == 0) {
         i--;
         continue;
@@ -266,5 +267,5 @@ void loop() {
       break;
     }
   }
-  receiveHandshakeAndClockSync();
+  //receiveHandshakeAndClockSync();
 }
