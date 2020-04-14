@@ -216,15 +216,19 @@ def determineTrend(data):
     return trend
 
 #Determines when frequency is decreasing and time is increasing that the dancer wearing the EMG is fatigued
-def EMGAnalytics(MaxAmp, MeanFreq):
+def EMGAnalytics(MaxAmp,MeanAmp,RMSAmp,MeanFreq):
     #Taking the last 5 datapoints
     try:
-        AmpData = (list(MaxAmp))[-5:]
-        AmpTrend = determineTrend(AmpData)
+        MaxAmpData = (list(MaxAmp))[-5:]
+        MaxAmpTrend = determineTrend(MaxAmpData)
+        MeanAmpData = (list(MeanAmp))[-5:]
+        MeanAmpTrend = determineTrend(MeanAmpData)
+        RMSAmpData = (list(RMSAmp))[-5:]
+        RMSAmpTrend = determineTrend(RMSAmpData)
         FreqData = (list(MeanFreq))[-5:]
         FreqTrend = determineTrend(FreqData)
-        if(FreqTrend == "decreasing" and AmpTrend == "increasing"): #Time go up Freq go down
-            return "Muscles being contracted"#fatigue
+        if(FreqTrend == "decreasing" and MaxAmpTrend == "increasing" and MeanAmpTrend == "increasing" and RMSAmpTrend == 'increasing' ): #Time go up Freq go down
+            return "Fatigued"#fatigue
         else:
             return "No issues present"#??Ready to dance?
     except:
@@ -283,7 +287,7 @@ def update_graph(n):
     lastRow2 = getLastRow("Beetle2")
     lastRow3 = getLastRow("Beetle3")
     lastRow4 = getLastRow("EMG")
-    MLDancer1 = getLastRow("MLDancer1")
+    MLDancer = getLastRow("MLDancer")
 
 
     #Append new data to deque
@@ -306,17 +310,6 @@ def update_graph(n):
     Y3.append(lastRow3[4])
     Z3.append(lastRow3[5])
     MaxAmp.append(lastRow4[0])
-    #===================================Test
-##    global front
-##    global back
-##    global counter
-##    if(front == 5 or front == 0):
-##        counter *=-1
-##    front +=counter
-##    back +=counter*-1
-##    MaxAmp.append(front)
-##    MeanFreq.append(back)
-    #==========================================
     MeanAmp.append(lastRow4[1])
     RMSAmp.append(lastRow4[2])
     MeanFreq.append(lastRow4[3])
@@ -346,12 +339,7 @@ def update_graph(n):
         name='RMS Amplitude',
         mode= 'lines'
         ))
-    MeanFrequency = (go.Scatter(
-        x=list(X),
-        y=list(data_dict['MeanFreq']),
-        name='Mean Frequency',
-        mode= 'lines'
-        ))
+
     #Appends graph to EMG time graph
     EMG1.append(dbc.Col(html.Div(dcc.Graph(
                 id="EMG1",
@@ -366,6 +354,13 @@ def update_graph(n):
                                                             width = 360
                                                             )}
             ))))
+
+    MeanFrequency = (go.Scatter(
+    x=list(X),
+    y=list(data_dict['MeanFreq']),
+    name='Mean Frequency',
+    mode= 'lines'
+    ))
     
     #Appends graph to EMG frquency graph
     EMG2.append(dbc.Col(html.Div(dcc.Graph(

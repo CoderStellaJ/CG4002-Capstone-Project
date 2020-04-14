@@ -75,90 +75,10 @@ def createTable(tableName, *columnNames):
     connection.commit()
     print("Table created successfully in PostgreSQL ")
     
-#FAKE DATA IMPLEMENTATION
-import threading
-global i
-i=-1
-def change():
-    global i
-    threading.Timer(5.0,change).start()
-    print(i)
-    i = i+1
-    if(i==10):
-        i = 0
 
-def fakeData(Dancer):
-    global i
-    threading.Timer(2.0, fakeData, args=[Dancer]).start()
-    arr = ["shoutout","transition",
-           "weightlift","transition",
-           "muscle","transition",
-           "shoutout","transition",
-           "weightlift","transition"]
-    if (arr[i] == "shoutout"):
-        addValue(Dancer,"shoutout",1.0, 1.0, 1.0)
-    elif (arr[i] == "weightlift"):
-        addValue(Dancer, "weightlift",2.0, 3.0, 5.0)
-    elif (arr[i] == "muscle"):
-        addValue(Dancer,"muscle",3.0, 4.0, 4.0)
-    elif (arr[i] == "transition"):
-        addValue(Dancer, "transition", 0, 0, 0)
-    #print(showTable("Dancer1"))
-
-def processDatabase():
-    #Create a beetle
-    #createTable("Beetle1", "Yaw", "Pitch", "Row", "Xaxis", "Yaxis", "Zaxis")
-    #createTable("EMG", "MaxAmplitude", "MeanAmplitude", "RMSAmplitude", "MeanFrequency")
-    #addValue("EMG", "100.0","-100.0", "100.0", "-100.0" )
-    print("Data processed")
     
-import numpy as np
-from collections import deque
 #testing
 if __name__ == '__main__':
+    x = 0#Do nothing
 
-    addValue('MLDancer1', "-")
-    #createTable("MLDancer1", "Dancer1")
-    ##6 Beetles---------> Yaw,pitch,roll,X-Axis,Y-Axis,Z-Axis
-    ##EMG ------------> mean amplitude(MeanAmp),root mean square amplitude(RMSAmp) mean frequency(MeanFreq)
-##    createTable("Beetle3", "Yaw", "Pitch", "Row", "Xaxis", "Yaxis", "Zaxis")
-    #addValue("Beetle6", "-20.00", "-40.00", "-60.00", "-100.00", "-120.00", "-180.00")
-##    for no in range(1,7):
-##        showTable("Beetle" + str(no))
-
-    ##EMG
-    #processDatabase()
-    #https://neutrium.net/mathematics/least-squares-fitting-of-a-polynomial/
-##    index = [1,2,3,4,5]
-##    data = [1.0,1.00000000001,1.0000005,1.0000002,1.0002]
-##    coeffs = np.polyfit(index,list(data), 1)
-##    slope = coeffs[-2]
-##    print(float(slope))
-##    
-##    
-##
-##    deq = deque(maxlen =5)
-##    for i in data:
-##        deq.append(i)
-##    print (deq)
-##    print(list(deq))
-##    x = list(deq)
-##    print(x[-2:])
-    
-    #change()
-    #fakeData("Dancer1")
-    #fakeData("Dancer2")
-    #fakeData("Dancer3")
-    
-    #createTable("Dancer3", "GroundTruth", "Yaw", "Pitch", "Roll")
-    #showTable("Dancer3")
-    #showTable("Dancer2")
-    
-    #clearTable("Dancer1")
-    #addValue("test", "NEWNEWNNewValueHellos", "IdasdsssS", "32.0")
-    #addValue("MLDancer1","dumbbell")
-    #showTable("Hello")
-    #getLastRow("testTable")
-    #showTable("testTable")
-    #print(getLastRow("testTable"))
     
