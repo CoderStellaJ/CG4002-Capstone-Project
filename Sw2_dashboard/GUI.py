@@ -1,4 +1,4 @@
-#Testing for real time display
+#Testing for real time display, developed by Gerald Chua Deng Xiang
 #https://community.plot.ly/t/high-cpu-in-the-browser-and-python/17073/6 -> Hacking a method to speed up performance
 import dash
 from dash import no_update

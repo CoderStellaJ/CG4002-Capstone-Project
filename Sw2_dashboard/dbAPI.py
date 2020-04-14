@@ -1,3 +1,4 @@
+#Developed by Gerald Chua Deng Xiang
 import psycopg2 #import for DB
 
 #Create the connection

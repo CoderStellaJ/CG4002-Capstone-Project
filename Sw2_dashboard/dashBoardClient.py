@@ -1,4 +1,4 @@
-#Code for dashboard client
+#Code for dashboard client developed by Gerald Chua Deng Xiang
 import sys
 import socket
 import base64
@@ -55,6 +55,7 @@ class Client():
         self.shutdown.set()
         self.timer.cancel()
 
+#Testing
 def main():
 ##    if len(sys.argv) != 5:    
 ##        print('Invalid number of arguments')

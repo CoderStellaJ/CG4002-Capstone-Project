@@ -1,6 +1,5 @@
 #Dashboard server that interacts with client server of ATMEGA96
-#cd Desktop/Github/CG4002-Capstone-Project/Sw2_dashboard
-#python dashboardServer.py 192.168.43.248
+#Developed by Gerald Chua Deng Xiang
 
 import os
 import sys
