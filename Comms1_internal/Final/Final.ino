@@ -48,6 +48,8 @@ volatile int accelIndex = 0;
 
 // Variable to check whether the dancer has stopped moving or not
 volatile boolean stoppedMoving = false;
+// Variable to set the setOnce variable only once
+volatile boolean setOnce = false;
 
 // Communication variables
 char transmit_buffer[70];
@@ -170,7 +172,7 @@ void receiveHandshakeAndClockSync()
     if (Serial.available() && Serial.read() == 'T') { // need to do time calibration
       while (1) {
         if (Serial.available() && Serial.read() == 'H') {
-          Serial.print('A');
+          Serial.print('T');
           tmp_recv_timestamp = millis();
           Serial.print(tmp_recv_timestamp);
           break;
@@ -184,7 +186,7 @@ void receiveHandshakeAndClockSync()
         if (Serial.available() && Serial.read() == 'A') { // ultra96 received timestamp
           break;
         } else if (Serial.available() && Serial.read() == 'R') { // retransmit timestamp as ultra96 did not receive it
-          Serial.print('A');
+          Serial.print('T');
           Serial.print(tmp_recv_timestamp);
           Serial.print('|');
           Serial.print(tmp_send_timestamp);
@@ -199,19 +201,21 @@ void receiveHandshakeAndClockSync()
 }
 
 void loop() {
+  int tmp = 0;
   while (1) {
+    timestamp = 0;
+    setOnce = false;
     // Get the initial timestamp of this new dance move
-    timestamp = millis();
-    for (int i = 0; i < 160; i++) {
+    for (int i = 0; i < 200; i++) {
       if (getYPR_worldAccel() == 0) {
         i--;
         continue;
       }
-
+      tmp = i;
       // Store the differences for ypr and accel into yprDiff and accelDiff into the circular buffer
-      yprDiff[yprIndex][0] = abs((ypr[0] * 180/M_PI) - lastYaw);
-      yprDiff[yprIndex][1] = abs((ypr[1] * 180/M_PI) - lastPitch);
-      yprDiff[yprIndex][2] = abs((ypr[2] * 180/M_PI) - lastRoll);
+      yprDiff[yprIndex][0] = abs((ypr[0] * 180 / M_PI) - lastYaw);
+      yprDiff[yprIndex][1] = abs((ypr[1] * 180 / M_PI) - lastPitch);
+      yprDiff[yprIndex][2] = abs((ypr[2] * 180 / M_PI) - lastRoll);
       yprIndex++;
 
       accelDiff[accelIndex][0] = abs(accelWorld.x - lastAccelX);
@@ -220,9 +224,9 @@ void loop() {
       accelIndex++;
 
       // Update the lastYPR and lastAccel values to the current value
-      lastYaw = ypr[0] * 180/M_PI;
-      lastPitch = ypr[1] * 180/M_PI;
-      lastRoll = ypr[2] * 180/M_PI;
+      lastYaw = ypr[0] * 180 / M_PI;
+      lastPitch = ypr[1] * 180 / M_PI;
+      lastRoll = ypr[2] * 180 / M_PI;
       lastAccelX = accelWorld.x;
       lastAccelY = accelWorld.y;
       lastAccelZ = accelWorld.z;
@@ -242,7 +246,7 @@ void loop() {
       volatile long accelXDiffSum = 0;
       volatile long accelYDiffSum = 0;
       volatile long accelZDiffSum = 0;
-      
+
       for (int j = 0; j < THRESHOLDING_SAMPLES; j++) {
         yawDiffSum += yprDiff[j][0];
         pitchDiffSum += yprDiff[j][1];
@@ -251,16 +255,16 @@ void loop() {
         accelYDiffSum += accelDiff[j][1];
         accelZDiffSum += accelDiff[j][2];
       }
-
-      if ((abs(yawDiffSum) <= 10 || abs(pitchDiffSum) <= 10 || abs(rollDiffSum) <= 10) && (abs(accelXDiffSum) <= 2000 || abs(accelYDiffSum) <= 2000 || abs(accelZDiffSum) <= 2000)) {
+      if (tmp > 40 && !setOnce && (abs(yawDiffSum) <= 10 || abs(pitchDiffSum) <= 10 || abs(rollDiffSum) <= 10) && (abs(accelXDiffSum) <= 2000 || abs(accelYDiffSum) <= 2000 || abs(accelZDiffSum) <= 2000)) {
         stoppedMoving = true;
       }
-  
-      if (stoppedMoving && ((abs(yawDiffSum) >= 15 || abs(pitchDiffSum) >= 15 || abs(rollDiffSum) >= 15) && (abs(accelXDiffSum) >= 5000 || abs(accelYDiffSum) >= 5000 || abs(accelZDiffSum) >= 5000))) {
+
+      if (!setOnce && stoppedMoving && ((abs(yawDiffSum) >= 15 || abs(pitchDiffSum) >= 15 || abs(rollDiffSum) >= 15) && (abs(accelXDiffSum) >= 5000 || abs(accelYDiffSum) >= 5000 || abs(accelZDiffSum) >= 5000))) {
         stoppedMoving = false;
-        Serial.println("EXCEED THRESHOLD");
+        setOnce = true;
+        timestamp = millis();
       }
-      
+
       int chksum = 0;
       char yaw[5];
       char pitch[5];

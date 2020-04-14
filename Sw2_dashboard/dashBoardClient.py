@@ -34,7 +34,7 @@ class Client():
         
         #dataList = list(data.values())
         encrypted_text = self.encrypt_message_DB(table, data)
-        print("encrypted_text: ", encrypted_text)
+        print("[Dashboard Client] encrypted_text: ", encrypted_text)
         sent_message = encrypted_text
         print("[Dashboard Client] sent_message length: ", len(sent_message))
         self.socket.sendall(sent_message)

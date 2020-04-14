@@ -44,9 +44,7 @@ class Client():
     def send_data(self, position, action, syncdelay):
         encrypted_text = self.encrypt_message(position, action, syncdelay)
         print("[Evaluation Client] encrypted_text: ", encrypted_text)
-        sent_message = encrypted_text
-        # print("[Evaluation Client] sent_message length: ", len(sent_message))
-        self.socket.sendall(sent_message)
+        self.socket.sendall(encrypted_text)
 
     def receive_dancer_position(self):
         dancer_position = self.socket.recv(1024)
