@@ -626,15 +626,13 @@ if __name__ == '__main__':
     [global_beetle.append(0) for idx in range(len(beetle_addresses))]
 
     try:
-        eval_client = eval_client.Client(
-            "192.168.43.6", 8080, 6, "cg40024002group6")
+        eval_client = eval_client.Client("192.168.43.6", 8080, 6, "cg40024002group6")
     except Exception as e:
         print(e)
 
     
     try:
-        board_client = dashBoardClient.Client(
-            "192.168.43.248", 8080, 6, "cg40024002group6")
+        board_client = dashBoardClient.Client("192.168.43.248", 8080, 6, "cg40024002group6")
     except Exception as e:
         print(e)
     

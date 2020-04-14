@@ -41,13 +41,9 @@ class Client():
     def send_data_to_DB(self, table, data):
         
         #dataList = list(data.values())
-<<<<<<< HEAD
-        encrypted_text = self.encrypt_message_DB(table, data)
-        print("encrypted_text: ", encrypted_text)
-=======
+
         encrypted_text = self.encrypt_message_DB(table, dataDict)
         print("[Dashboard Client] encrypted_text: ", encrypted_text)
->>>>>>> 6d90a7cf7bfb20db97821969df88923e9033e11e
         sent_message = encrypted_text
         print("[Dashboard Client] sent_message length: ", len(sent_message))
         self.socket.sendall(sent_message)
