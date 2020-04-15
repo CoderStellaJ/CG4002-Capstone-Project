@@ -1,5 +1,8 @@
+### Not updated
+
 ### GUI.py 
 ###### *User interface to view all sensor data. Currently, it has 3 dancers and each dancer has yaw, pitch and raw*
+
 To run code:
 `python GUI.py`
 

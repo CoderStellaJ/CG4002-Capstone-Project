@@ -1,6 +1,5 @@
 #Dashboard server that interacts with client server of ATMEGA96
-#cd Desktop/Github/CG4002-Capstone-Project/Sw2_dashboard
-#python dashboardServer.py 192.168.43.248
+#Developed by Gerald Chua Deng Xiang
 
 import os
 import sys
@@ -132,40 +131,10 @@ class Server(threading.Thread):
 
         decrypted_message = decrypted_message[decrypted_message.find('#'):]
         decrypted_message = bytes(decrypted_message[1:], 'iso-8859-1').decode('iso-8859-1')
-##        messages = decrypted_message.split('|')
-##        position, action, sync = messages[:MESSAGE_SIZE]
         
         return decrypted_message
 
-import threading
-global i
-i=0
-def changeMove():
-    #using i as a counter to change variables
-    global i
-    threading.Timer(5.0,changeMove).start()
-    i = i+1
-    if(i==10):
-        i = i - 1
-    
 
-def fakeData():
-    global i
-    threading.Timer(1.0, fakeData).start()
-    arr = ["shoutout","transition",
-           "weightlift","transition",
-           "muscle","transition",
-           "shoutout","transition",
-           "weightlift","transition"]
-    if (arr[i] == "shoutout"):
-        addValue("Dancer1",1.0, 1.0, 1.0)
-    elif (arr[i] == "weightlift"):
-        addValue("Dancer1",2.0, 3.0, 5.0)
-    elif (arr[i] == "muscle"):
-        addValue("Dancer1",3.0, 4.0, 4.0)
-    elif (arr[i] == "transition"):
-        addValue("Dancer1", 0, 0, 0)
-    
 
 def main():
 ##    if len(sys.argv) != 4:
@@ -183,8 +152,5 @@ def main():
     my_server.start()
 
 if __name__ == '__main__':
-    #showTable("testTable")
-    #changeMove()
-    #fakeData()
     main()
     
