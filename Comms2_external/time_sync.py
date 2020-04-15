@@ -1,6 +1,7 @@
 def calculate_clock_offset(beetle_timestamp_list):
     if(len(beetle_timestamp_list) == 4) :
-        RTT = (beetle_timestamp_list[3] - beetle_timestamp_list[0]) - (beetle_timestamp_list[2] - beetle_timestamp_list[1])
+        RTT = (beetle_timestamp_list[3] - beetle_timestamp_list[0]) \
+              - (beetle_timestamp_list[2] - beetle_timestamp_list[1])
         clock_offset = (beetle_timestamp_list[1] - beetle_timestamp_list[0]) - RTT/2
         return clock_offset
     else:
@@ -36,10 +37,16 @@ def calculate_ultra96_time(beetle_data_dict, clock_offset):
 
 
 def calculate_sync_delay(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96):
+    sync_delay = 850
     if beetle1_time_ultra96 is not None and beetle2_time_ultra96 is not None and beetle3_time_ultra96 is not None:
-        sync_delay = max(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96) - min(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96)
-    elif beetle3_time_ultra96 is None or beetle2_time_ultra96 is None or beetle3_time_ultra96 is None:
-        sync_delay = 1250
+        sync_delay = max(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96) \
+                     - min(beetle1_time_ultra96, beetle2_time_ultra96, beetle3_time_ultra96)
+    elif beetle1_time_ultra96 is None:
+        sync_delay = max(beetle2_time_ultra96, beetle3_time_ultra96) - min(beetle2_time_ultra96, beetle3_time_ultra96)
+    elif beetle2_time_ultra96 is None:
+        sync_delay = max(beetle1_time_ultra96, beetle3_time_ultra96) - min(beetle1_time_ultra96, beetle3_time_ultra96)
+    elif beetle3_time_ultra96 is None:
+        sync_delay = max(beetle1_time_ultra96, beetle2_time_ultra96) - min(beetle1_time_ultra96, beetle2_time_ultra96)
     return sync_delay
 
 

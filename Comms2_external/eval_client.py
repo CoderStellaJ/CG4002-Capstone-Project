@@ -38,7 +38,6 @@ class Client():
         aes_key = bytes(str(self.secret_key), encoding="utf8")
         cipher = AES.new(aes_key, AES.MODE_CBC, iv)
         encrypted_text = base64.b64encode(iv + cipher.encrypt(bytes(padded_plain_text, "utf8")))
-        print(type(encrypted_text))
         return encrypted_text
 
     def send_data(self, position, action, syncdelay):
